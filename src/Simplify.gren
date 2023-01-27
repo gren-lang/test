@@ -59,23 +59,32 @@ andThen fn { newState } =
     fn newState
 
 
-simplify : State a -> ( a, RandomRun, Expectation )
+type alias SimplifyStepResult a =
+    { value : a
+    , run : RandomRun
+    , expectation : Expectation
+    }
+
+simplify : State a -> SimplifyStepResult a
 simplify state =
     {-
        let
            _ =
-               Debug.log "--------------" ()
+               Debug.log "--------------" {}
        in
     -}
     if RandomRun.isEmpty state.randomRun then
         -- We can't do any better
-        ( state.value, state.randomRun, state.expectation )
+        { value = state.value
+        , run = state.randomRun
+        , expectation = state.expectation
+        }
 
     else
         simplifyWhileProgress state
 
 
-simplifyWhileProgress : State a -> ( a, RandomRun, Expectation )
+simplifyWhileProgress : State a -> SimplifyStepResult a
 simplifyWhileProgress state =
     {-
        let
@@ -88,7 +97,10 @@ simplifyWhileProgress state =
             simplifyOnce state
     in
     if RandomRun.equal nextState.randomRun state.randomRun then
-        ( nextState.value, nextState.randomRun, nextState.expectation )
+        { value = nextState.value
+        , run = nextState.randomRun
+        , expectation = nextState.expectation 
+        }
 
     else
         simplifyWhileProgress nextState
@@ -101,13 +113,13 @@ simplifyOnce state =
         state
 
 
-runCmds : List SimplifyCmd -> State a -> State a
+runCmds : Array SimplifyCmd -> State a -> State a
 runCmds cmds state =
-    case cmds of
-        [] ->
+    case Array.popFirst cmds of
+        Nothing ->
             state
 
-        cmd :: rest ->
+        Just { first = cmd, rest = rest } ->
             let
                 { wasImprovement, newState } =
                     runCmd cmd state
@@ -117,8 +129,7 @@ runCmds cmds state =
 
                 newRest =
                     if wasImprovement && newLength < RandomRun.length state.randomRun then
-                        rest
-                            |> List.filter (\{ minLength } -> newLength >= minLength)
+                        Array.filter (\{ minLength } -> newLength >= minLength) rest
 
                     else
                         rest
@@ -130,7 +141,7 @@ logRun : String -> RandomRun -> RandomRun
 logRun label run =
     let
         _ =
-            Debug.log label (RandomRun.toList run)
+            Debug.log label (RandomRun.toArray run)
     in
     run
 
@@ -139,7 +150,7 @@ logState : String -> State a -> State a
 logState label state =
     let
         runString =
-            Debug.toString (RandomRun.toList state.randomRun)
+            Debug.toString (RandomRun.toArray state.randomRun)
     in
     let
         _ =
@@ -149,10 +160,10 @@ logState label state =
                         _ =
                             Debug.log (label ++ " - " ++ runString ++ " --->") value
                     in
-                    ()
+                    {}
 
                 _ ->
-                    ()
+                    {}
     in
     state
 
@@ -314,18 +325,18 @@ minimizeFloat { leftIndex } state =
                     minimizeExponentPart : State a -> SimplifyResult a
                     minimizeExponentPart state_ =
                         case
-                            Maybe.map2 Tuple.pair
+                            Maybe.map2 (\hi lo -> { hi = hi, lo = lo })
                                 (RandomRun.get leftIndex state_.randomRun)
                                 (RandomRun.get (leftIndex + 1) state_.randomRun)
                         of
                             Nothing ->
                                 noImprovement state_
 
-                            Just ( hi, lo ) ->
+                            Just { hi, lo } ->
                                 let
                                     exponent : Int
                                     exponent =
-                                        Fuzz.Float.getExponent ( hi, lo )
+                                        Fuzz.Float.getExponent { hi = hi, lo = lo }
                                 in
                                 binarySearchShrink
                                     { low = 0
@@ -334,8 +345,8 @@ minimizeFloat { leftIndex } state =
                                     , updateRun =
                                         \newExponent accRun ->
                                             let
-                                                ( newHi, newLo ) =
-                                                    Fuzz.Float.setExponent newExponent ( hi, lo )
+                                                { newHi, newLo } =
+                                                    Fuzz.Float.setExponent newExponent { hi = hi, lo = lo }
                                             in
                                             accRun
                                                 |> RandomRun.set leftIndex newHi
@@ -345,18 +356,18 @@ minimizeFloat { leftIndex } state =
                     minimizeMantissaPart : State a -> SimplifyResult a
                     minimizeMantissaPart state_ =
                         case
-                            Maybe.map2 Tuple.pair
+                            Maybe.map2 (\hi lo -> { hi = hi, lo = lo })
                                 (RandomRun.get leftIndex state_.randomRun)
                                 (RandomRun.get (leftIndex + 1) state_.randomRun)
                         of
                             Nothing ->
                                 noImprovement state_
 
-                            Just ( hi, lo ) ->
+                            Just { hi, lo } ->
                                 let
                                     mantissa : Int
                                     mantissa =
-                                        Fuzz.Float.getMantissa ( hi, lo )
+                                        Fuzz.Float.getMantissa { hi = hi, lo = lo }
                                 in
                                 binarySearchShrink
                                     { low = 0
@@ -365,8 +376,8 @@ minimizeFloat { leftIndex } state =
                                     , updateRun =
                                         \newMantissa accRun ->
                                             let
-                                                ( newHi, newLo ) =
-                                                    Fuzz.Float.setMantissa newMantissa ( hi, lo )
+                                                { newHi, newLo } =
+                                                    Fuzz.Float.setMantissa newMantissa { hi = hi, lo = lo }
                                             in
                                             accRun
                                                 |> RandomRun.set leftIndex newHi
@@ -442,8 +453,8 @@ redistributeChoicesAndMaybeIncrement options state =
                         , updateRun =
                             \value accRun ->
                                 RandomRun.replace
-                                    [ ( options.leftIndex, value )
-                                    , ( options.rightIndex, newRightValue + newLeftValue - value )
+                                    [ { index = options.leftIndex, value = value }
+                                    , { index = options.rightIndex, value = newRightValue + newLeftValue - value }
                                     ]
                                     accRun
                         }

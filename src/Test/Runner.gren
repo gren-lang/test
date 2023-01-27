@@ -42,7 +42,7 @@ These functions give you the ability to run fuzzers separate of running fuzz tes
 
 import Bitwise
 import Char
-import Elm.Kernel.Test
+import Gren.Kernel.Test
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer)
 import Fuzz.Internal
@@ -62,15 +62,15 @@ import Test.Runner.Failure exposing (Reason(..))
 {-| An unevaluated test.
 -}
 type Runnable
-    = Thunk (() -> List Expectation)
+    = Thunk ({} -> Array Expectation)
 
 
 {-| A function which, when evaluated, produces a list of expectations. Also a
 list of labels which apply to this outcome.
 -}
 type alias Runner =
-    { run : () -> List Expectation
-    , labels : List String
+    { run : {} -> Array Expectation
+    , labels : Array String
     }
 
 
@@ -91,7 +91,7 @@ In order to run any fuzz tests that the `Test` may have, it requires a default r
 as an initial `Random.Seed`. `100` is a good run count. To obtain a good random seed, pass a
 random 32-bit integer to `Random.initialSeed`. You can obtain such an integer by running
 `Math.floor(Math.random()*0xFFFFFFFF)` in Node. It's typically fine to hard-code this value into
-your Elm code; it's easy and makes your tests reproducible.
+your Gren code; it's easy and makes your tests reproducible.
 
 -}
 fromTest : Int -> Random.Seed -> Test -> SeededRunners
@@ -104,26 +104,26 @@ fromTest runs seed test =
             distribution =
                 distributeSeeds runs seed test
         in
-        if List.isEmpty distribution.only then
+        if Array.isEmpty distribution.only then
             if countAllRunnables distribution.skipped == 0 then
                 distribution.all
-                    |> List.concatMap fromRunnableTree
+                    |> Array.concatMap fromRunnableTree
                     |> Plain
 
             else
                 distribution.all
-                    |> List.concatMap fromRunnableTree
+                    |> Array.concatMap fromRunnableTree
                     |> Skipping
 
         else
             distribution.only
-                |> List.concatMap fromRunnableTree
+                |> Array.concatMap fromRunnableTree
                 |> Only
 
 
-countAllRunnables : List RunnableTree -> Int
+countAllRunnables : Array RunnableTree -> Int
 countAllRunnables =
-    List.foldl (countRunnables >> (+)) 0
+    Array.foldl (countRunnables >> (+)) 0
 
 
 countRunnables : RunnableTree -> Int
@@ -136,7 +136,7 @@ countRunnables runnable =
             countRunnables runner
 
 
-run : Runnable -> List Expectation
+run : Runnable -> Array Expectation
 run (Thunk fn) =
     case runThunk fn of
         Ok test ->
@@ -146,17 +146,17 @@ run (Thunk fn) =
             [ Expect.fail ("This test failed because it threw an exception: \"" ++ message ++ "\"") ]
 
 
-runThunk : (() -> a) -> Result String a
+runThunk : ({} -> a) -> Result String a
 runThunk =
-    Elm.Kernel.Test.runThunk
+    Gren.Kernel.Test.runThunk
 
 
-fromRunnableTree : RunnableTree -> List Runner
+fromRunnableTree : RunnableTree -> Array Runner
 fromRunnableTree =
     fromRunnableTreeHelp []
 
 
-fromRunnableTreeHelp : List String -> RunnableTree -> List Runner
+fromRunnableTreeHelp : Array String -> RunnableTree -> Array Runner
 fromRunnableTreeHelp labels runner =
     case runner of
         Runnable runnable ->
@@ -171,9 +171,9 @@ fromRunnableTreeHelp labels runner =
 
 type alias Distribution =
     { seed : Random.Seed
-    , only : List RunnableTree
-    , all : List RunnableTree
-    , skipped : List RunnableTree
+    , only : Array RunnableTree
+    , all : Array RunnableTree
+    , skipped : Array RunnableTree
     }
 
 
@@ -187,9 +187,9 @@ either invalid or are ready to run. Seeded runners include some metadata:
 
 -}
 type SeededRunners
-    = Plain (List Runner)
-    | Only (List Runner)
-    | Skipping (List Runner)
+    = Plain (Array Runner)
+    | Only (Array Runner)
+    | Skipping (Array Runner)
     | Invalid String
 
 
@@ -238,14 +238,14 @@ distributeSeedsHelp hashed runs seed test =
     case test of
         Internal.ElmTestVariant__UnitTest aRun ->
             { seed = seed
-            , all = [ Runnable (Thunk (\_ -> aRun ())) ]
+            , all = [ Runnable (Thunk (\_ -> aRun {})) ]
             , only = []
             , skipped = []
             }
 
         Internal.ElmTestVariant__FuzzTest aRun ->
             let
-                ( firstSeed, nextSeed ) =
+                { first = firstSeed, next = nextSeed } =
                     Random.step Random.independentSeed seed
             in
             { seed = nextSeed
@@ -266,9 +266,9 @@ distributeSeedsHelp hashed runs seed test =
                         distributeSeedsHelp True runs seed subTest
                 in
                 { seed = next.seed
-                , all = List.map (Labeled description) next.all
-                , only = List.map (Labeled description) next.only
-                , skipped = List.map (Labeled description) next.skipped
+                , all = Array.map (Labeled description) next.all
+                , only = Array.map (Labeled description) next.only
+                , skipped = Array.map (Labeled description) next.skipped
                 }
 
             else
@@ -302,9 +302,9 @@ distributeSeedsHelp hashed runs seed test =
                 -- with the hashed seed, but subsequent sibling tests in this Batch
                 -- get the same seed as before.
                 { seed = seed
-                , all = List.map (Labeled description) next.all
-                , only = List.map (Labeled description) next.only
-                , skipped = List.map (Labeled description) next.skipped
+                , all = Array.map (Labeled description) next.all
+                , only = Array.map (Labeled description) next.only
+                , skipped = Array.map (Labeled description) next.skipped
                 }
 
         Internal.ElmTestVariant__Skipped subTest ->
@@ -329,7 +329,7 @@ distributeSeedsHelp hashed runs seed test =
             { next | only = next.all }
 
         Internal.ElmTestVariant__Batch tests ->
-            List.foldl (batchDistribute hashed runs) (emptyDistribution seed) tests
+            Array.foldl (batchDistribute hashed runs) (emptyDistribution seed) tests
 
 
 batchDistribute : Bool -> Int -> Test -> Distribution -> Distribution
@@ -356,7 +356,7 @@ fnvInit =
 -}
 fnvHashString : Int -> String -> Int
 fnvHashString hash str =
-    str |> String.toList |> List.map Char.toCode |> List.foldl fnvHash hash
+    str |> String.toArray |> Array.map Char.toCode |> Array.foldl fnvHash hash
 
 
 {-| FNV-1a implementation.
@@ -458,18 +458,18 @@ Example:
 formatLabels :
     (String -> format)
     -> (String -> format)
-    -> List String
-    -> List format
+    -> Array String
+    -> Array format
 formatLabels formatDescription formatTest labels =
-    case List.filter (not << String.isEmpty) labels of
-        [] ->
+    case Array.popFirst <| Array.filter (not << String.isEmpty) labels of
+        Nothing ->
             []
 
-        test :: descriptions ->
+        Just { first = test, rest = descriptions } ->
             descriptions
-                |> List.map formatDescription
-                |> (::) (formatTest test)
-                |> List.reverse
+                |> Array.map formatDescription
+                |> Array.pushFirst (formatTest test)
+                |> Array.reverse
 
 
 {-| A `Simplifiable a` is an opaque type that allows you to obtain a value of type
@@ -489,7 +489,7 @@ Note that fuzzers aren't generated to succeed, which is why this function return
 a Result. The String inside the Err case will contain a failure reason.
 
 -}
-fuzz : Fuzzer a -> Random.Generator (Result String ( a, Simplifiable a ))
+fuzz : Fuzzer a -> Random.Generator (Result String { value : a, simplifiable : Simplifiable a })
 fuzz fuzzer =
     Random.independentSeed
         |> Random.map
@@ -497,12 +497,12 @@ fuzz fuzzer =
                 case Fuzz.Internal.generate (PRNG.random seed) fuzzer of
                     Generated { value, prng } ->
                         Ok
-                            ( value
-                            , Simplifiable
+                            { value= value
+                            , simplifiable = Simplifiable
                                 { randomRun = PRNG.getRun prng
                                 , fuzzer = fuzzer
                                 }
-                            )
+                            }
 
                     Rejected { reason } ->
                         Err reason
@@ -514,10 +514,10 @@ drive the simplification process: if a simplified value passes the test, it will
 be discarded. In this sense, you will get the simplest value that still fails
 your test.
 -}
-simplify : (a -> Expectation) -> ( a, Simplifiable a ) -> Maybe ( a, Simplifiable a )
-simplify getExpectation ( value, Simplifiable { randomRun, fuzzer } ) =
+simplify : (a -> Expectation) -> { value : a, simpliable : Simplifiable a } -> Maybe { value : a, simplifiable : Simplifiable a }
+simplify getExpectation { value = value, simplifiable = Simplifiable { randomRun, fuzzer } } =
     let
-        ( newValue, newRandomRun, _ ) =
+        { value = newValue, run = newRandomRun } =
             Simplify.simplify
                 { getExpectation = getExpectation
                 , fuzzer = fuzzer
@@ -531,9 +531,9 @@ simplify getExpectation ( value, Simplifiable { randomRun, fuzzer } ) =
 
     else
         Just
-            ( newValue
-            , Simplifiable
+            { value = newValue
+            , simplifiable = Simplifiable
                 { randomRun = newRandomRun
                 , fuzzer = fuzzer
                 }
-            )
+            }
