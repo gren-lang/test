@@ -1,0 +1,20 @@
+{
+    "type": "package",
+    "platform": "common",
+    "name": "gren-lang/test",
+    "summary": "Write unit and fuzz tests for Gren code.",
+    "license": "BSD-3-Clause",
+    "version": "1.0.0",
+    "exposed-modules": [
+        "Test",
+        "Test.Runner",
+        "Test.Runner.Failure",
+        "Test.Distribution",
+        "Expect",
+        "Fuzz"
+    ],
+    "gren-version": "0.2.1 <= v < 0.3.0",
+    "dependencies": {
+        "gren-lang/core": "3.0.0 <= v < 4.0.0"
+    }
+}
