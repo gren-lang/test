@@ -9,11 +9,13 @@ module Test.Distribution.Internal exposing
     , sufficientlyCovered
     )
 
+import Math
+
 
 type Distribution a
     = NoDistributionNeeded
-    | ReportDistribution (List ( String, a -> Bool ))
-    | ExpectDistribution (List ( ExpectedDistribution, String, a -> Bool ))
+    | ReportDistribution (Array {  label : String, fn : a -> Bool })
+    | ExpectDistribution (Array { expectedDistribution : ExpectedDistribution, label : String, fn : a -> Bool })
 
 
 type ExpectedDistribution
@@ -35,7 +37,7 @@ expectedDistributionToString expectedDistribution =
             ">= " ++ formatPct pct
 
 
-getDistributionLabels : Distribution a -> Maybe (List ( String, a -> Bool ))
+getDistributionLabels : Distribution a -> Maybe (Array { label : String, fn : a -> Bool })
 getDistributionLabels distribution =
     case distribution of
         NoDistributionNeeded ->
@@ -45,10 +47,10 @@ getDistributionLabels distribution =
             Just list
 
         ExpectDistribution list ->
-            Just (List.map (\( _, l, p ) -> ( l, p )) list)
+            Just (Array.map (\{ label, fn } -> { label = label, fn = fn }) list)
 
 
-getExpectedDistributions : Distribution a -> Maybe (List ( String, ExpectedDistribution ))
+getExpectedDistributions : Distribution a -> Maybe (Array { label : String, expectedDistribution : ExpectedDistribution })
 getExpectedDistributions distribution =
     case distribution of
         NoDistributionNeeded ->
@@ -58,7 +60,7 @@ getExpectedDistributions distribution =
             Nothing
 
         ExpectDistribution list ->
-            Just (List.map (\( e, l, _ ) -> ( l, e )) list)
+            Just (Array.map (\{ expectedDistribution, label } -> { label = label, expectedDistribution = expectedDistribution }) list)
 
 
 formatPct : Float -> String
@@ -66,11 +68,11 @@ formatPct n =
     let
         intPart : Int
         intPart =
-            floor n
+            Math.floor n
 
         thousandths : Int
         thousandths =
-            round (n * 1000 - toFloat (intPart * 1000))
+            Math.round (n * 1000 - toFloat (intPart * 1000))
     in
     String.fromInt intPart
         ++ "."
@@ -162,7 +164,7 @@ wilson k n z =
     in
     (p
         + (zz / (2 * n))
-        + (z * sqrt ((p * (1 - p) / n) + (zz / (4 * n * n))))
+        + (z * Math.sqrt ((p * (1 - p) / n) + (zz / (4 * n * n))))
     )
         / (1 + zz / n)
 
@@ -189,7 +191,7 @@ invnormcdf p =
     else if p < pLow then
         let
             q =
-                sqrt (-2 * logBase e p)
+                Math.sqrt (-2 * Math.logBase Math.e p)
         in
         (((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6)
             / ((((d1 * q + d2) * q + d3) * q + d4) * q + 1)
@@ -208,7 +210,7 @@ invnormcdf p =
     else
         let
             q =
-                sqrt (-2 * logBase e (1 - p))
+                Math.sqrt (-2 * Math.logBase Math.e (1 - p))
         in
         -(((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6)
             / ((((d1 * q + d2) * q + d3) * q + d4) * q + 1)

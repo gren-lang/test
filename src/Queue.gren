@@ -1,7 +1,7 @@
 module Queue exposing
     ( Queue, empty, singleton
     , isEmpty, size, enqueue, dequeue, front
-    , fromList, toList
+    , fromArray, toArray
     , map, filter, updateFront
     )
 
@@ -22,9 +22,9 @@ Queue is simple FIFO (first in, first out) datastructure.
 @docs isEmpty, size, enqueue, dequeue, front
 
 
-# Lists
+# Arrays
 
-@docs fromList, toList
+@docs fromArray, toArray
 
 
 # Transformations
@@ -37,18 +37,18 @@ Queue is simple FIFO (first in, first out) datastructure.
 
 
 type alias Rear a =
-    List a
+    Array a
 
 
 type alias Front a =
-    List a
+    Array a
 
 
 {-| Equality checks (`==`) on `Queue` are unreliable due to dynamic distribution of elements.
 
-If you need equality checks use [`toList`](#toList).
+If you need equality checks use [`toArray`](#toArray).
 
-    Queue.toList firstQueue == Queue.toList secondQueue
+    Queue.toArray firstQueue == Queue.toArray secondQueue
 
 -}
 type Queue a
@@ -61,7 +61,7 @@ queue : Front a -> Rear a -> Queue a
 queue fl rl =
     case fl of
         [] ->
-            Queue (List.reverse rl) []
+            Queue (Array.reverse rl) []
 
         _ ->
             Queue fl rl
@@ -76,7 +76,7 @@ empty =
 
 {-| Construct Queue containing single value
 
-    Queue.toList (Queue.singleton 1) == [ 1 ]
+    Queue.toArray (Queue.singleton 1) == [ 1 ]
 
 -}
 singleton : a -> Queue a
@@ -92,74 +92,74 @@ singleton a =
 
     Queue.isEmpty Queue.empty == True
 
-    Queue.isEmpty (Queue.fromList [ 1, 2 ]) == False
+    Queue.isEmpty (Queue.fromArray [ 1, 2 ]) == False
 
 -}
 isEmpty : Queue a -> Bool
 isEmpty (Queue fl rl) =
-    List.isEmpty fl && List.isEmpty rl
+    Array.isEmpty fl && Array.isEmpty rl
 
 
 {-| Get size of `Queue`
 
     Queue.size Queue.empty == 0
 
-    Queue.size (Queue.fromList [ 1, 2 ]) == 2
+    Queue.size (Queue.fromArray [ 1, 2 ]) == 2
 
 -}
 size : Queue a -> Int
 size (Queue fl rl) =
-    List.length fl + List.length rl
+    Array.length fl + Array.length rl
 
 
 {-| Add item to `Queue`
 
     Queue.size (Queue.enqueue 1 Queue.empty) == 1
 
-    Queue.size (Queue.enqueue 1 (Queue.fromList [ 1, 2 ])) == 3
+    Queue.size (Queue.enqueue 1 (Queue.fromArray [ 1, 2 ])) == 3
 
 -}
 enqueue : a -> Queue a -> Queue a
 enqueue a (Queue fl rl) =
-    queue fl <| a :: rl
+    queue fl <| Array.pushFirst a rl
 
 
 {-| Take item from `Queue`
 
     Queue.dequeue Queue.empty == ( Nothing, Queue.empty )
 
-    Queue.dequeue (Queue.fromList [ 1 ]) == ( Just 1, Queue.empty )
+    Queue.dequeue (Queue.fromArray [ 1 ]) == ( Just 1, Queue.empty )
 
 -}
-dequeue : Queue a -> ( Maybe a, Queue a )
+dequeue : Queue a -> { first : Maybe a, rest : Queue a }
 dequeue (Queue fl rl) =
-    case fl of
-        [] ->
-            ( Nothing, Queue [] [] )
+    case Array.popFirst fl of
+        Nothing ->
+            { first = Nothing, rest = Queue [] [] }
 
-        head :: tail ->
-            ( Just head, queue tail rl )
+        Just { first = head, rest = tail } ->
+            { first = Just head, rest = queue tail rl }
 
 
 {-| Ask for front item without removing it from `Queue`
 
     Queue.front Queue.empty == Nothing
 
-    Queue.front (Queue.fromList [ 1, 2 ]) == Just 1
+    Queue.front (Queue.fromArray [ 1, 2 ]) == Just 1
 
 -}
 front : Queue a -> Maybe a
 front (Queue fl _) =
-    List.head fl
+    Array.first fl
 
 
 {-| Update value at the front of the queue
 
-    Queue.toList (Queue.updateFront (Maybe.map (\x -> x + 1)) (Queue.singleton 3)) == [ 4 ]
+    Queue.toArray (Queue.updateFront (Maybe.map (\x -> x + 1)) (Queue.singleton 3)) == [ 4 ]
 
-    Queue.toList (Queue.updateFront (Maybe.map (\_ -> Just 42)) Queue.empty) == [ 42 ]
+    Queue.toArray (Queue.updateFront (Maybe.map (\_ -> Just 42)) Queue.empty) == [ 42 ]
 
-    Queue.toList (Queue.updateFront (Maybe.map (\_ -> Nothing)) (Queue.singleton 3)) == []
+    Queue.toArray (Queue.updateFront (Maybe.map (\_ -> Nothing)) (Queue.singleton 3)) == []
 
 -}
 updateFront : (Maybe a -> Maybe a) -> Queue a -> Queue a
@@ -168,45 +168,45 @@ updateFront f (Queue fl rl) =
         update_ maybe t =
             case f maybe of
                 Just a ->
-                    a :: t
+                    Array.pushFirst a t
 
                 Nothing ->
                     t
     in
-    case fl of
-        h :: t ->
+    case Array.popFirst fl of
+        Just { first = h, rest = t } ->
             Queue (update_ (Just h) t) rl
 
-        [] ->
+        Nothing ->
             Queue (update_ Nothing []) rl
 
 
 
--- Lists
+-- Arrays
 
 
-{-| Build `Queue` from `List`
+{-| Build `Queue` from `Array`
 
-    Queue.fromList [] == Queue.empty
+    Queue.fromArray [] == Queue.empty
 
-    Queue.size (Queue.fromList [ 1, 2, 3 ]) == 3
+    Queue.size (Queue.fromArray [ 1, 2, 3 ]) == 3
 
 -}
-fromList : List a -> Queue a
-fromList list =
+fromArray : Array a -> Queue a
+fromArray list =
     Queue list []
 
 
-{-| Convert `Queue` to `List`
+{-| Convert `Queue` to `Array`
 
-    Queue.toList (Queue.fromList []) == []
+    Queue.toArray (Queue.fromArray []) == []
 
-    Queue.toList (Queue.fromList [ 1, 2, 3 ]) == [ 1, 2, 3 ]
+    Queue.toArray (Queue.fromArray [ 1, 2, 3 ]) == [ 1, 2, 3 ]
 
 -}
-toList : Queue a -> List a
-toList (Queue fl rl) =
-    fl ++ List.reverse rl
+toArray : Queue a -> Array a
+toArray (Queue fl rl) =
+    fl ++ Array.reverse rl
 
 
 
@@ -215,31 +215,31 @@ toList (Queue fl rl) =
 
 {-| Map function over `Queue`
 
-    Queue.toList (Queue.map identity (Queue.fromList [ 1, 2 ])) == [ 1, 2 ]
+    Queue.toArray (Queue.map identity (Queue.fromArray [ 1, 2 ])) == [ 1, 2 ]
 
-    Queue.toList (Queue.map ((+) 1) (Queue.fromList [ 1, 2 ])) == [ 2, 3 ]
+    Queue.toArray (Queue.map ((+) 1) (Queue.fromArray [ 1, 2 ])) == [ 2, 3 ]
 
 -}
 map : (a -> b) -> Queue a -> Queue b
 map fc (Queue fl rl) =
     let
         map_ =
-            List.map fc
+            Array.map fc
     in
     queue (map_ fl) (map_ rl)
 
 
 {-| Filter items items in `Queue`
 
-    Queue.toList (Queue.filter identity (Queue.fromList [ True, False ])) == [ True ]
+    Queue.toArray (Queue.filter identity (Queue.fromArray [ True, False ])) == [ True ]
 
-    Queue.toList (Queue.filter ((<) 1) (Queue.fromList [ 1, 2 ])) == [ 2 ]
+    Queue.toArray (Queue.filter ((<) 1) (Queue.fromArray [ 1, 2 ])) == [ 2 ]
 
 -}
 filter : (a -> Bool) -> Queue a -> Queue a
 filter fc (Queue fl rl) =
     let
         f =
-            List.filter fc
+            Array.filter fc
     in
     queue (f fl) (f rl)

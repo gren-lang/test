@@ -47,12 +47,12 @@ type alias Test =
     concat [ testDecoder, testSorting ]
 
 -}
-concat : List Test -> Test
+concat : Array Test -> Test
 concat tests =
-    if List.isEmpty tests then
+    if Array.isEmpty tests then
         Internal.failNow
             { description = "This `concat` has no tests in it. Let's give it some!"
-            , reason = Invalid EmptyList
+            , reason = Invalid EmptyArray
             }
 
     else
@@ -63,7 +63,7 @@ concat tests =
                         "A test group contains multiple tests named '" ++ duped ++ "'. Do some renaming so that tests have unique names."
                 in
                 Internal.failNow
-                    { description = String.join "\n" (List.map dupDescription <| Set.toList dups)
+                    { description = String.join "\n" (Array.map dupDescription <| Set.toArray dups)
                     , reason = Invalid DuplicatedName
                     }
 
@@ -78,15 +78,15 @@ concat tests =
     import Expect
 
 
-    describe "List"
+    describe "Array"
         [ describe "reverse"
             [ test "has no effect on an empty list" <|
                 \_ ->
-                    List.reverse []
+                    Array.reverse []
                         |> Expect.equal []
             , fuzz int "has no effect on a one-item list" <|
                 \num ->
-                     List.reverse [ num ]
+                     Array.reverse [ num ]
                         |> Expect.equal [ num ]
             ]
         ]
@@ -95,7 +95,7 @@ Passing an empty list will result in a failing test, because you either made a
 mistake or are creating a placeholder.
 
 -}
-describe : String -> List Test -> Test
+describe : String -> Array Test -> Test
 describe untrimmedDesc tests =
     let
         desc =
@@ -107,10 +107,10 @@ describe untrimmedDesc tests =
             , reason = Invalid BadDescription
             }
 
-    else if List.isEmpty tests then
+    else if Array.isEmpty tests then
         Internal.failNow
             { description = "This `describe " ++ desc ++ "` has no tests in it. Let's give it some!"
-            , reason = Invalid EmptyList
+            , reason = Invalid EmptyArray
             }
 
     else
@@ -122,7 +122,7 @@ describe untrimmedDesc tests =
                 in
                 Internal.ElmTestVariant__Labeled desc <|
                     Internal.failNow
-                        { description = String.join "\n" (List.map dupDescription <| Set.toList dups)
+                        { description = String.join "\n" (Array.map dupDescription <| Set.toArray dups)
                         , reason = Invalid DuplicatedName
                         }
 
@@ -147,11 +147,11 @@ describe untrimmedDesc tests =
 
     test "the empty list has 0 length" <|
         \_ ->
-            List.length []
+            Array.length []
                 |> Expect.equal 0
 
 -}
-test : String -> (() -> Expectation) -> Test
+test : String -> ({} -> Expectation) -> Test
 test untrimmedDesc thunk =
     let
         desc =
@@ -161,7 +161,7 @@ test untrimmedDesc thunk =
         Internal.blankDescriptionFailure
 
     else
-        Internal.ElmTestVariant__Labeled desc (Internal.ElmTestVariant__UnitTest (\() -> [ thunk () ]))
+        Internal.ElmTestVariant__Labeled desc (Internal.ElmTestVariant__UnitTest (\{} -> [ thunk {} ]))
 
 
 {-| Returns a [`Test`](#Test) that is "TODO" (not yet implemented). These tests
@@ -209,21 +209,21 @@ See also [`skip`](#skip). Note that `skip` takes precedence over `only`;
 if you use a `skip` inside an `only`, it will still get skipped, and if you use
 an `only` inside a `skip`, it will also get skipped.
 
-    describe "List"
+    describe "Array"
         [ only <|
             describe "reverse"
                 [ test "has no effect on an empty list" <|
                     \_ ->
-                        List.reverse []
+                        Array.reverse []
                             |> Expect.equal []
                 , fuzz int "has no effect on a one-item list" <|
                     \num ->
-                        List.reverse [ num ]
+                        Array.reverse [ num ]
                             |> Expect.equal [ num ]
                 ]
         , test "This will not get run, because of the `only` above!" <|
             \_ ->
-                List.length []
+                Array.length []
                     |> Expect.equal 0
         ]
 
@@ -245,21 +245,21 @@ See also [`only`](#only). Note that `skip` takes precedence over `only`;
 if you use a `skip` inside an `only`, it will still get skipped, and if you use
 an `only` inside a `skip`, it will also get skipped.
 
-    describe "List"
+    describe "Array"
         [ skip <|
             describe "reverse"
                 [ test "has no effect on an empty list" <|
                     \_ ->
-                        List.reverse []
+                        Array.reverse []
                             |> Expect.equal []
                 , fuzz int "has no effect on a one-item list" <|
                     \num ->
-                        List.reverse [ num ]
+                        Array.reverse [ num ]
                             |> Expect.equal [ num ]
                 ]
         , test "This is the only test that will get run; the other was skipped!" <|
             \_ ->
-                List.length []
+                Array.length []
                     |> Expect.equal 0
         ]
 
@@ -282,13 +282,13 @@ The number of times to run each fuzz test. (Default is 100.)
 
     fuzzWith { runs = 350, distribution = noDistribution }
         (list int)
-        "List.length should never be negative" <|
+        "Array.length should never be negative" <|
         -- This anonymous function will be run 350 times, each time with a
-        -- randomly-generated fuzzList value. (It will always be a list of ints
+        -- randomly-generated fuzzArray value. (It will always be a list of ints
         -- because of (list int) above.)
-        \fuzzList ->
-            fuzzList
-                |> List.length
+        \fuzzArray ->
+            fuzzArray
+                |> Array.length
                 |> Expect.atLeast 0
 
 
@@ -306,15 +306,15 @@ A way to report/enforce a statistical distribution of your input values.
         { runs = 350
         , distribution =
             expectDistribution
-                [ ( Test.Distribution.zero, "empty", \xs -> List.length xs == 0 )
-                , ( Test.Distribution.atLeast 10, "3+ items", \xs -> List.length xs >= 3 )
+                [ ( Test.Distribution.zero, "empty", \xs -> Array.length xs == 0 )
+                , ( Test.Distribution.atLeast 10, "3+ items", \xs -> Array.length xs >= 3 )
                 ]
         }
         (list int)
         "Sum > Average"
     <|
         \xs ->
-            List.sum xs
+            Array.sum xs
                 |> Expect.greaterThan (average xs)
 
 -}
@@ -337,10 +337,10 @@ for example like this:
 
     fuzzWith { runs = 4200, distribution = noDistribution }
         (pair (list int) int)
-        "List.reverse never influences List.member" <|
+        "Array.reverse never influences Array.member" <|
             \(nums, target) ->
-                List.member target (List.reverse nums)
-                    |> Expect.equal (List.member target nums)
+                Array.member target (Array.reverse nums)
+                    |> Expect.equal (Array.member target nums)
 
 -}
 fuzzWith : FuzzOptions a -> Fuzzer a -> String -> (a -> Expectation) -> Test
@@ -379,7 +379,7 @@ fuzzWithHelp options aTest =
 
         Internal.ElmTestVariant__Batch tests ->
             tests
-                |> List.map (fuzzWithHelp options)
+                |> Array.map (fuzzWithHelp options)
                 |> Internal.ElmTestVariant__Batch
 
 
@@ -398,12 +398,12 @@ You may find them elsewhere called [property-based tests](http://blog.jessitron.
     import Expect
 
 
-    fuzz (list int) "List.length should never be negative" <|
+    fuzz (list int) "Array.length should never be negative" <|
         -- This anonymous function will be run 100 times, each time with a
-        -- randomly-generated fuzzList value.
-        \fuzzList ->
-            fuzzList
-                |> List.length
+        -- randomly-generated fuzzArray value.
+        \fuzzArray ->
+            fuzzArray
+                |> Array.length
                 |> Expect.atLeast 0
 
 -}
@@ -426,10 +426,10 @@ See [`fuzzWith`](#fuzzWith) for an example of writing this using tuples.
     import Fuzz exposing (list, int)
 
 
-    fuzz2 (list int) int "List.reverse never influences List.member" <|
+    fuzz2 (list int) int "Array.reverse never influences Array.member" <|
         \nums target ->
-            List.member target (List.reverse nums)
-                |> Expect.equal (List.member target nums)
+            Array.member target (Array.reverse nums)
+                |> Expect.equal (Array.member target nums)
 
 -}
 fuzz2 :
@@ -531,7 +531,7 @@ noDistribution =
 {-| Collects statistics and reports them after the test runs (both when it passes
 and fails).
 -}
-reportDistribution : List ( String, a -> Bool ) -> Distribution a
+reportDistribution : Array ( String, a -> Bool ) -> Distribution a
 reportDistribution =
     Test.Distribution.Internal.ReportDistribution
 
@@ -553,15 +553,6 @@ Currently the statistical test is tuned to allow a false positive/negative in
 1 in every 10^9 tests.
 
 -}
-expectDistribution : List ( ExpectedDistribution, String, a -> Bool ) -> Distribution a
+expectDistribution : Array ( ExpectedDistribution, String, a -> Bool ) -> Distribution a
 expectDistribution =
     Test.Distribution.Internal.ExpectDistribution
-
-
-
--- INTERNAL HELPERS --
-
-
-uncurry3 : (a -> b -> c -> d) -> ( a, b, c ) -> d
-uncurry3 fn ( a, b, c ) =
-    fn a b c

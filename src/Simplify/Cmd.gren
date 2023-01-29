@@ -4,7 +4,7 @@ module Simplify.Cmd exposing
     , cmdsForRun
     )
 
-import MicroListExtra as List
+import MicroArrayExtra as Array
 import RandomRun exposing (Chunk, RandomRun)
 import Set exposing (Set)
 
@@ -81,13 +81,13 @@ type SimplifyCmdType
     | SwapChunkWithNeighbour Chunk
 
 
-cmdsForRun : RandomRun -> List SimplifyCmd
+cmdsForRun : RandomRun -> Array SimplifyCmd
 cmdsForRun run =
     let
         length =
             RandomRun.length run
     in
-    List.fastConcat
+    Array.flatten
         [ deletionCmds length
         , zeroCmds length
         , minimizeChoiceCmds run length
@@ -99,7 +99,7 @@ cmdsForRun run =
         ]
 
 
-deletionCmds : Int -> List SimplifyCmd
+deletionCmds : Int -> Array SimplifyCmd
 deletionCmds length =
     chunkCmds
         DeleteChunkAndMaybeDecrementPrevious
@@ -108,7 +108,7 @@ deletionCmds length =
         }
 
 
-zeroCmds : Int -> List SimplifyCmd
+zeroCmds : Int -> Array SimplifyCmd
 zeroCmds length =
     chunkCmds
         ReplaceChunkWithZero
@@ -117,7 +117,7 @@ zeroCmds length =
         }
 
 
-sortCmds : Int -> List SimplifyCmd
+sortCmds : Int -> Array SimplifyCmd
 sortCmds length =
     chunkCmds
         SortChunk
@@ -126,13 +126,13 @@ sortCmds length =
         }
 
 
-minimizeChoiceCmds : RandomRun -> Int -> List SimplifyCmd
+minimizeChoiceCmds : RandomRun -> Int -> Array SimplifyCmd
 minimizeChoiceCmds run length =
     run
-        |> RandomRun.toList
-        |> List.indexedMap Tuple.pair
-        |> List.filterMap
-            (\( index, value ) ->
+        |> RandomRun.toArray
+        |> Array.indexedMap (\index value -> { index = index, value = value })
+        |> Array.filterMap
+            (\{ index, value } ->
                 if value > 0 then
                     Just
                         { type_ = MinimizeChoice { index = index }
@@ -145,26 +145,26 @@ minimizeChoiceCmds run length =
             )
 
 
-minimizeFloatCmds : RandomRun -> Int -> List SimplifyCmd
+minimizeFloatCmds : RandomRun -> Int -> Array SimplifyCmd
 minimizeFloatCmds run length =
     let
         possibleBoolIndexes : Set Int
         possibleBoolIndexes =
             run
-                |> RandomRun.toList
-                |> List.indexedMap Tuple.pair
-                |> List.filterMap
-                    (\( index, value ) ->
+                |> RandomRun.toArray
+                |> Array.indexedMap (\index value -> { index = index, value = value })
+                |> Array.filterMap
+                    (\{ index, value } ->
                         if value > 1 then
                             Nothing
 
                         else
                             Just index
                     )
-                |> Set.fromList
+                |> Set.fromArray
     in
-    List.range 0 (length - 3)
-        |> List.filterMap
+    Array.range 0 (length - 3)
+        |> Array.filterMap
             (\index ->
                 if Set.member (index + 2) possibleBoolIndexes then
                     Just
@@ -177,7 +177,7 @@ minimizeFloatCmds run length =
             )
 
 
-decrementTogetherCmds : Int -> List SimplifyCmd
+decrementTogetherCmds : Int -> Array SimplifyCmd
 decrementTogetherCmds length =
     let
         maxOffsetLimit =
@@ -187,8 +187,8 @@ decrementTogetherCmds length =
             else
                 2
     in
-    List.range 0 (length - 2)
-        |> List.fastConcatMap
+    Array.range 0 (length - 2)
+        |> Array.flatMap
             (\index ->
                 let
                     maxOffset =
@@ -196,11 +196,11 @@ decrementTogetherCmds length =
                             maxOffsetLimit
                             (length - index - 1)
                 in
-                List.range 1 maxOffset
-                    |> List.fastConcatMap
+                Array.range 1 maxOffset
+                    |> Array.flatMap
                         (\offset ->
                             [ 4, 2, 1 ]
-                                |> List.map
+                                |> Array.map
                                     (\by ->
                                         let
                                             rightIndex =
@@ -219,18 +219,18 @@ decrementTogetherCmds length =
             )
 
 
-redistributeCmds : Int -> List SimplifyCmd
+redistributeCmds : Int -> Array SimplifyCmd
 redistributeCmds length =
     let
-        forOffset : Int -> List SimplifyCmd
+        forOffset : Int -> Array SimplifyCmd
         forOffset offset =
             if offset >= length then
                 []
 
             else
-                List.range 0 (length - 1 - offset)
-                    |> List.reverse
-                    |> List.map
+                Array.range 0 (length - 1 - offset)
+                    |> Array.reverse
+                    |> Array.map
                         (\leftIndex ->
                             { type_ =
                                 RedistributeChoicesAndMaybeIncrement
@@ -244,14 +244,14 @@ redistributeCmds length =
     forOffset 3 ++ forOffset 2 ++ forOffset 1
 
 
-swapCmds : Int -> List SimplifyCmd
+swapCmds : Int -> Array SimplifyCmd
 swapCmds length =
     chunkCmds
         SwapChunkWithNeighbour
         { length = length
         , allowChunksOfSize1 = False -- other Cmds are already doing the case with size=1
         }
-        |> List.map
+        |> Array.map
             (\cmd ->
                 case cmd.type_ of
                     SwapChunkWithNeighbour chunk ->
@@ -300,7 +300,7 @@ SortChunk { chunkSize = 8, startIndex = 2 } -- [..XXXXXXXX]
 chunkCmds :
     ({ size : Int, startIndex : Int } -> SimplifyCmdType)
     -> { length : Int, allowChunksOfSize1 : Bool }
-    -> List SimplifyCmd
+    -> Array SimplifyCmd
 chunkCmds toType { length, allowChunksOfSize1 } =
     let
         initChunkSize : Int
@@ -311,7 +311,7 @@ chunkCmds toType { length, allowChunksOfSize1 } =
             else
                 2
 
-        go : Int -> Int -> List SimplifyCmd -> List SimplifyCmd
+        go : Int -> Int -> Array SimplifyCmd -> Array SimplifyCmd
         go chunkSize startIndex acc =
             if startIndex > length - chunkSize then
                 if chunkSize == 8 then
@@ -337,6 +337,6 @@ chunkCmds toType { length, allowChunksOfSize1 } =
                         , minLength = startIndex + chunkSize
                         }
                 in
-                go chunkSize (startIndex + 1) (newCmd :: acc)
+                go chunkSize (startIndex + 1) (Array.pushFirst newCmd acc)
     in
     go initChunkSize 0 []

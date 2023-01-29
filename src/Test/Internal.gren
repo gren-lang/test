@@ -14,7 +14,7 @@ For more information, see <https://github.com/elm-explorations/test/pull/153>
 
 -}
 type Test
-    = ElmTestVariant__UnitTest (() -> List Expectation)
+    = ElmTestVariant__UnitTest ({} -> List Expectation)
     | ElmTestVariant__FuzzTest (Random.Seed -> Int -> List Expectation)
     | ElmTestVariant__Labeled String Test
     | ElmTestVariant__Skipped Test
@@ -27,7 +27,7 @@ type Test
 failNow : { description : String, reason : Reason } -> Test
 failNow record =
     ElmTestVariant__UnitTest
-        (\() -> [ Test.Expectation.fail record ])
+        (\{} -> [ Test.Expectation.fail record ])
 
 
 blankDescriptionFailure : Test
@@ -62,17 +62,17 @@ duplicatedName tests =
                 ElmTestVariant__Only subTest ->
                     names subTest
 
-        accumDuplicates : String -> ( Set String, Set String ) -> ( Set String, Set String )
-        accumDuplicates newName ( dups, uniques ) =
+        accumDuplicates : String -> { dups : Set String, uniques : Set String } -> { dups : Set String, uniques : Set String }
+        accumDuplicates newName { dups, uniques } =
             if Set.member newName uniques then
-                ( Set.insert newName dups, uniques )
+                { dups = Set.insert newName dups, uniques = uniques }
 
             else
-                ( dups, Set.insert newName uniques )
+                { dups = dups, uniques = Set.insert newName uniques }
 
-        ( dupsAccum, uniquesAccum ) =
+        { dupsAccum, uniquesAccum } =
             List.concatMap names tests
-                |> List.foldl accumDuplicates ( Set.empty, Set.empty )
+                |> List.foldl accumDuplicates { dups = Set.empty, uniques = Set.empty }
     in
     if Set.isEmpty dupsAccum then
         Ok uniquesAccum
