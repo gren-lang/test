@@ -8,7 +8,6 @@ module MicroBitwiseExtra exposing
     , signedToUnsigned
     )
 
-import Array exposing (Array)
 import Bitwise
 
 
@@ -26,8 +25,8 @@ isBitSet index num =
             == 1
 
 
-int52FromTuple : ( Int, Int ) -> Int
-int52FromTuple ( highBits, lowBits ) =
+int52FromTuple : { hi : Int, lo : Int } -> Int
+int52FromTuple { hi = highBits, lo = lowBits } =
     (+)
         (highBits
             |> keepBits 20
@@ -41,16 +40,16 @@ int52FromTuple ( highBits, lowBits ) =
         )
 
 
-int52ToTuple : Int -> ( Int, Int )
+int52ToTuple : Int -> { hi : Int, lo : Int }
 int52ToTuple n =
-    ( -- Bitwise.shiftRightZfBy 32 would be buggy, so we do:
-      (n // 0x0000000100000000)
+    { -- Bitwise.shiftRightZfBy 32 would be buggy, so we do:
+      hi = (n // 0x0000000100000000)
         |> keepBits 20
         |> signedToUnsigned
-    , n
+    , lo = n
         |> keepBits 32
         |> signedToUnsigned
-    )
+    }
 
 
 ones : Int -> Int
@@ -93,10 +92,8 @@ reverseByte b_ =
 
 reverseByteTable : Array Int
 reverseByteTable =
-    -- TODO PERF `Dict Int Int` or `IntDict Int` or `List` instead? Benchmark?
-    List.range 0 255
-        |> List.map reverseByte
-        |> Array.fromList
+    Array.range 0 255
+        |> Array.map reverseByte
 
 
 memoizedReverseByte : Int -> Int
@@ -144,8 +141,8 @@ Simplified view of the bits:
      [ abcPONML ] [ KJIHGFED ]
 
 -}
-reverse52Bits : ( Int, Int ) -> ( Int, Int )
-reverse52Bits ( hi20, lo32 ) =
+reverse52Bits : { hi : Int, lo : Int } -> { hi : Int, lo : Int }
+reverse52Bits { hi = hi20, lo = lo32 } =
     let
         reversedLo32 =
             reverse32Bits lo32
@@ -166,4 +163,4 @@ reverse52Bits ( hi20, lo32 ) =
                 |> Bitwise.or reversedHi20
                 |> signedToUnsigned
     in
-    ( newHi20, newLo32 )
+    { hi = newHi20, lo = newLo32 }

@@ -1,6 +1,6 @@
 module AsciiTable exposing (Align(..), Column, view)
 
-import MicroListExtra as List
+import MicroArrayExtra as Array
 
 
 type Align
@@ -21,21 +21,21 @@ So we return the original item next to the rendered row which makes the
 postprocessing possible!
 
 -}
-view : List (Column a) -> List a -> List { item : a, renderedRow : String }
+view : Array (Column a) -> Array a -> Array { item : a, renderedRow : String }
 view columns items =
     let
-        columnData : List (List String)
+        columnData : Array (Array String)
         columnData =
             columns
-                |> List.map (\col -> List.map col.toString items)
+                |> Array.map (\col -> Array.map col.toString items)
 
-        columnLengths : List Int
+        columnLengths : Array Int
         columnLengths =
             columnData
-                |> List.map
+                |> Array.map
                     (\colRows ->
-                        List.map String.length colRows
-                            |> List.maximum
+                        Array.map String.length colRows
+                            |> Array.maximum
                             |> Maybe.withDefault 0
                     )
 
@@ -48,18 +48,18 @@ view columns items =
                 AlignRight ->
                     String.padLeft length ' ' string
 
-        paddedColumnData : List (List String)
+        paddedColumnData : Array (Array String)
         paddedColumnData =
-            List.map3 (\col colLength colStrings -> List.map (padFn colLength col.align) colStrings)
+            Array.map3 (\col colLength colStrings -> Array.map (padFn colLength col.align) colStrings)
                 columns
                 columnLengths
                 columnData
     in
-    List.map2
+    Array.map2
         (\item rowCells ->
             { item = item
             , renderedRow = String.join "  " rowCells
             }
         )
         items
-        (List.transpose paddedColumnData)
+        (Array.transpose paddedColumnData)

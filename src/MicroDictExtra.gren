@@ -6,8 +6,8 @@ import Dict exposing (Dict)
 any : (k -> v -> Bool) -> Dict k v -> Bool
 any pred dict =
     dict
-        |> Dict.toList
-        |> List.any (\( k, v ) -> pred k v)
+        |> Dict.toArray
+        |> Array.any (\{ key, value } -> pred key value)
 
 
 increment : comparable -> Dict comparable Int -> Dict comparable Int

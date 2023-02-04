@@ -9,19 +9,19 @@ module Fuzz.Float exposing
     , wellShrinkingFloat
     )
 
-import Array exposing (Array)
 import Bitwise
 import Bytes exposing (Endianness(..))
 import Bytes.Decode
 import Bytes.Encode
 import MicroBitwiseExtra as Bitwise
+import Math
 
 
 {-| Input: two 32bit integers
 Output: Float (in the full range of IEEE-754 doubles)
 -}
-fromBytes : ( Int, Int ) -> Float
-fromBytes ( hi, lo ) =
+fromBytes : { hi : Int, lo : Int } -> Float
+fromBytes { hi, lo } =
     Bytes.Encode.sequence
         [ Bytes.Encode.unsignedInt32 BE hi
         , Bytes.Encode.unsignedInt32 BE lo
@@ -34,12 +34,12 @@ fromBytes ( hi, lo ) =
 {-| Converts the two 32bit integers to a float 0..1 (never reaching 1).
 Discards 12 most significant bits of `hi`.
 -}
-fractionalFloat : ( Int, Int ) -> Float
-fractionalFloat ( hi, lo ) =
+fractionalFloat : { hi : Int, lo : Int } -> Float
+fractionalFloat { hi, lo } =
     {- Keep only the mantissa bits (0x000FFFFF 0xFFFFFFFF)
        and divide them by the maximal mantissa.
     -}
-    fromBytes ( Bitwise.and 0x000FFFFF hi, lo )
+    fromBytes { hi = Bitwise.and 0x000FFFFF hi, lo = lo }
         / maxMantissa
 
 
@@ -47,7 +47,7 @@ fractionalFloat ( hi, lo ) =
 -}
 maxMantissa : Float
 maxMantissa =
-    fromBytes ( 0x000FFFFF, 0xFFFFFFFF )
+    fromBytes { hi = 0x000FFFFF, lo = 0xFFFFFFFF }
 
 
 {-| AKA, the float just below 1.
@@ -105,13 +105,13 @@ For how the reordering works, read the Hypothesis file, but essentially it will
 prefer simpler fractions and smaller positive numbers, so eg. 0, 0.5, 0.25, ...
 
 -}
-wellShrinkingFloat : ( Int, Int ) -> Float
-wellShrinkingFloat ( hi, lo ) =
+wellShrinkingFloat : { hi : Int, lo : Int } -> Float
+wellShrinkingFloat { hi, lo } =
     if isFractional hi then
         let
             rawExponent : Int
             rawExponent =
-                getExponent ( hi, lo )
+                getExponent { hi = hi, lo = lo }
 
             exponent : Int
             exponent =
@@ -121,11 +121,11 @@ wellShrinkingFloat ( hi, lo ) =
             unbiasedExponent =
                 exponent - exponentBias
 
-            rawMantissaTuple : ( Int, Int )
+            rawMantissaTuple : { hi : Int, lo : Int }
             rawMantissaTuple =
-                getMantissaTuple ( hi, lo )
+                getMantissaTuple { hi = hi, lo = lo }
 
-            ( mantissaHi, mantissaLo ) =
+            { hi = mantissaHi, lo = mantissaLo } =
                 reorderMantissa unbiasedExponent rawMantissaTuple
 
             newHi : Int
@@ -138,10 +138,10 @@ wellShrinkingFloat ( hi, lo ) =
             newLo =
                 mantissaLo
         in
-        fromBytes ( newHi, newLo )
+        fromBytes { hi = newHi, lo = newLo }
 
     else
-        ( hi, lo )
+        { hi = hi, lo = lo }
             |> Bitwise.int52FromTuple
             |> toFloat
 
@@ -164,16 +164,15 @@ maxExponent =
 
 exponentMapping : Array Int
 exponentMapping =
-    List.range 0 maxExponent
-        |> List.sortBy exponentKey
-        |> Array.fromList
+    Array.range 0 maxExponent
+        |> Array.sortBy exponentKey
 
 
 exponentKey : Int -> Int
 exponentKey e =
     if e == maxExponent then
         -- sort this one last. `+Inf : Int`
-        round (1 / 0)
+        Math.round (1 / 0)
 
     else
         let
@@ -187,10 +186,10 @@ exponentKey e =
             unbiased
 
 
-reorderMantissa : Int -> ( Int, Int ) -> ( Int, Int )
-reorderMantissa unbiasedExponent ( hi, lo ) =
+reorderMantissa : Int -> { hi : Int, lo : Int } -> { hi : Int, lo : Int }
+reorderMantissa unbiasedExponent { hi, lo } =
     if unbiasedExponent <= 0 then
-        Bitwise.reverse52Bits ( hi, lo )
+        Bitwise.reverse52Bits { hi = hi, lo = lo }
 
     else if unbiasedExponent <= 51 then
         let
@@ -235,36 +234,36 @@ reorderMantissa unbiasedExponent ( hi, lo ) =
                     |> Bitwise.xor fractionalPartLo
                     |> Bitwise.or reversedLo
         in
-        ( newHi, newLo )
+        { hi = newHi, lo = newLo }
 
     else
-        ( hi, lo )
+        { hi = hi, lo = lo }
 
 
-getExponent : ( Int, Int ) -> Int
-getExponent ( hi, _ ) =
+getExponent : { hi : Int, lo : Int } -> Int
+getExponent { hi } =
     hi
         |> Bitwise.shiftRightZfBy 20
         |> Bitwise.keepBits 11
 
 
-getMantissa : ( Int, Int ) -> Int
-getMantissa ( hi, lo ) =
-    ( hi, lo )
+getMantissa : { hi : Int, lo : Int } -> Int
+getMantissa { hi, lo } =
+    { hi = hi, lo = lo }
         |> getMantissaTuple
         |> Bitwise.int52FromTuple
 
 
-getMantissaTuple : ( Int, Int ) -> ( Int, Int )
-getMantissaTuple ( hi, lo ) =
-    ( Bitwise.keepBits 20 hi
-    , Bitwise.keepBits 32 lo
-    )
+getMantissaTuple : { hi : Int, lo : Int } -> { hi : Int, lo : Int }
+getMantissaTuple { hi, lo } =
+    { hi = Bitwise.keepBits 20 hi
+    , lo = Bitwise.keepBits 32 lo
+    }
 
 
-setExponent : Int -> ( Int, Int ) -> ( Int, Int )
-setExponent exponent ( hi, lo ) =
-    ( hi
+setExponent : Int -> { hi : Int, lo : Int } -> { hi : Int, lo : Int }
+setExponent exponent { hi, lo } =
+    { hi = hi
         |> Bitwise.and 0x800FFFFF
         |> Bitwise.or
             (exponent
@@ -272,26 +271,26 @@ setExponent exponent ( hi, lo ) =
                 |> Bitwise.shiftLeftBy 20
             )
         |> Bitwise.signedToUnsigned
-    , lo
-    )
+    , lo = lo
+    }
 
 
-setMantissa : Int -> ( Int, Int ) -> ( Int, Int )
-setMantissa mantissa ( hi, _ ) =
+setMantissa : Int -> { hi : Int, lo : Int } -> { hi : Int, lo : Int }
+setMantissa mantissa { hi } =
     let
-        ( mantissaHi, mantissaLo ) =
+        { hi = mantissaHi, lo = mantissaLo } =
             Bitwise.int52ToTuple mantissa
     in
-    ( hi
+    { hi = hi
         |> Bitwise.and 0xFFF00000
         |> Bitwise.or
             (mantissaHi
                 |> Bitwise.keepBits 20
             )
         |> Bitwise.signedToUnsigned
-    , mantissaLo
+    , lo = mantissaLo
         |> Bitwise.signedToUnsigned
-    )
+    }
 
 
 isFractional : Int -> Bool

@@ -4,6 +4,7 @@ import AsciiTable
 import Dict exposing (Dict)
 import MicroArrayExtra as Array
 import Set exposing (Set)
+import Math
 
 
 bars : Int
@@ -43,7 +44,7 @@ formatTable { runsElapsed, distributionCount } =
                         let
                             percentage : Float
                             percentage =
-                                toFloat (round (toFloat count / runsElapsed_ * 1000)) / 10
+                                toFloat (Math.round (toFloat count / runsElapsed_ * 1000)) / 10
                         in
                         { labels = labels
                         , count = count
@@ -152,7 +153,7 @@ barView { count, runsElapsed } =
 
         fullBars : Int
         fullBars =
-            round barsForPercentage
+            Math.round barsForPercentage
     in
     String.repeat fullBars "█"
         |> String.padRight bars '░'
