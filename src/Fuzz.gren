@@ -154,7 +154,7 @@ This fuzzer will generate values in the range `Random.minInt .. Random.maxInt`.
 int : Fuzzer Int
 int =
     intPreferences
-        |> Array.map (\{ weight, bits } -> { weight = weight, bits = intBits bits })
+        |> Array.map (\{ weight, bits } -> { weight = weight, fuzzer = intBits bits })
         |> intFrequency
         |> map
             (\n ->
@@ -264,7 +264,7 @@ intRange lo hi =
                                 else
                                     array_
                            )
-                        |> Array.map (\{ weight, bits } -> { weight = weight, bits = intBits bits })
+                        |> Array.map (\{ weight, bits } -> { weight = weight, fuzzer = intBits bits })
                         |> intFrequency
                         |> map (Math.modBy range)
         in
@@ -492,7 +492,7 @@ percentage =
         , { weight =1, fuzzer = constant Fuzz.Float.maxFractionalFloat } -- just barely below 1
         , { weight = 4
           , fuzzer = pair (uniformInt 0x000FFFFF) int32
-                |> map Fuzz.Float.fractionalFloat
+                |> map (\{ first, second } -> Fuzz.Float.fractionalFloat { hi = first, lo = second })
           }
         ]
 
@@ -1134,7 +1134,7 @@ frequencyHelp functionName fuzzers =
                     Array.all (\f -> f.weight == toFloat (Math.round f.weight)) nonzeroFuzzers
             in
             if allWeightsAreInts then
-                intFrequency (Array.map (\f -> { f | weight = Math.round f.weight }) nonzeroFuzzers)
+                intFrequency (Array.map (\f -> { weight = Math.round f.weight, fuzzer = f.fuzzer }) nonzeroFuzzers)
 
             else
                 let
@@ -1193,7 +1193,7 @@ intFrequency fuzzers =
                     weightSum =
                         Array.foldl (\f acc -> f.weight + acc) fuzz.weight rest
                 in
-                rollDice (weightSum - 1) (intFrequencyGenerator fuzz.fuzzer (Array.map .weight rest))
+                rollDice (weightSum - 1) (intFrequencyGenerator fuzz.weight (Array.map .weight rest))
                     |> andThen
                         (\i ->
                             fuzzers
@@ -1202,7 +1202,7 @@ intFrequency fuzzers =
                                 |> Maybe.withDefault (invalid "elm-test bug: intFrequency index out of range")
                         )
 
-            [] ->
+            Nothing ->
                 invalid "intFrequency: You must provide at least one item."
 
 
@@ -1212,8 +1212,8 @@ For example, to create a `Fuzzer` that has a 1/4 chance of generating a string
 "foo", and a 3/4 chance of generating a string "bar", you could do this:
 
     Fuzz.frequencyValues
-        [ ( 1, "foo" )
-        , ( 3, "bar" )
+        [ { weight = 1, value = "foo" }
+        , { weight = 3, value = "bar" }
         ]
 
 This fuzzer will simplify towards the values earlier in the array.
@@ -1226,10 +1226,10 @@ fuzzer, which causes it to fail any test that uses it:
   - If the weights sum to 0
 
 -}
-frequencyValues : Array { weight : Float, fuzzer : a } -> Fuzzer a
+frequencyValues : Array { weight : Float, value : a } -> Fuzzer a
 frequencyValues values =
     frequencyHelp "Fuzz.frequencyValues"
-        (Array.map .fuzzer values)
+        (Array.map (\e -> { weight = e.weight, fuzzer = constant e.value }) values)
 
 
 {-| Choose one of the given fuzzers at random. Each fuzzer has an equal chance
@@ -1782,6 +1782,7 @@ labelExamples n labels fuzzer =
                 )
                 labels
                 ++ Array.map (\{ key = label, value = example } -> { key = label, value = Just example }) combinations
+                |> Array.map (\keyValue -> { labels = keyValue.key, value = keyValue.value })
 
         Rejected _ ->
             []

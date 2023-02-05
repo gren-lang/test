@@ -71,15 +71,15 @@ Get it from your `Expectation` with `Test.Runner.getDistributionReport`.
 type DistributionReport
     = NoDistribution
     | DistributionToReport
-        { distributionCount : Dict (List String) Int
+        { distributionCount : Dict (Array String) Int
         , runsElapsed : Int
         }
     | DistributionCheckSucceeded
-        { distributionCount : Dict (List String) Int
+        { distributionCount : Dict (Array String) Int
         , runsElapsed : Int
         }
     | DistributionCheckFailed
-        { distributionCount : Dict (List String) Int
+        { distributionCount : Dict (Array String) Int
         , runsElapsed : Int
         , badLabel : String
         , badLabelPercentage : Float
@@ -98,7 +98,7 @@ type DistributionReport
 distributionReportTable :
     { a
         | runsElapsed : Int
-        , distributionCount : Dict (List String) Int
+        , distributionCount : Dict (Array String) Int
     }
     -> String
 distributionReportTable r =

@@ -14,7 +14,7 @@ import Math
 
 type Distribution a
     = NoDistributionNeeded
-    | ReportDistribution (Array {  label : String, fn : a -> Bool })
+    | ReportDistribution (Array { label : String, fn : a -> Bool })
     | ExpectDistribution (Array { expectedDistribution : ExpectedDistribution, label : String, fn : a -> Bool })
 
 

@@ -4,7 +4,7 @@ import Dict exposing (Dict)
 import Fuzz.Internal exposing (Fuzzer)
 import GenResult exposing (GenResult(..))
 import MicroDictExtra as Dict
-import MicroListExtra as List
+import MicroArrayExtra as Array
 import MicroMaybeExtra as Maybe
 import PRNG
 import Random
@@ -82,7 +82,7 @@ type alias LoopConstants a =
 
 type alias LoopState =
     { runsElapsed : Int
-    , distributionCount : Maybe (Dict (List String) Int)
+    , distributionCount : Maybe (Dict (Array String) Int)
     , nextPowerOfTwo : Int
     , failure : Maybe Failure
     , currentSeed : Random.Seed
@@ -92,14 +92,14 @@ type alias LoopState =
 initLoopState : Random.Seed -> Distribution a -> LoopState
 initLoopState initialSeed distribution =
     let
-        initialDistributionCount : Maybe (Dict (List String) Int)
+        initialDistributionCount : Maybe (Dict (Array String) Int)
         initialDistributionCount =
             Test.Distribution.Internal.getDistributionLabels distribution
                 |> Maybe.map
                     (\labels ->
                         labels
-                            |> List.map (\( label, _ ) -> ( [ label ], 0 ))
-                            |> Dict.fromList
+                            |> Array.map (\{ label } -> { key = [ label ], value = 0 })
+                            |> Dict.fromArray
                     )
     in
     { runsElapsed = 0
@@ -189,7 +189,7 @@ fuzzLoop c state =
 
                     ExpectDistribution _ ->
                         let
-                            normalizedDistributionCount : Maybe (Dict (List String) Int)
+                            normalizedDistributionCount : Maybe (Dict (Array String) Int)
                             normalizedDistributionCount =
                                 Maybe.map includeCombinationsInBaseCounts state.distributionCount
                         in
@@ -237,42 +237,42 @@ type alias DistributionFailure =
     , actualPercentage : Float
     , expectedDistribution : ExpectedDistribution
     , runsElapsed : Int
-    , distributionCount : Dict (List String) Int
+    , distributionCount : Dict (Array String) Int
     }
 
 
-allSufficientlyCovered : LoopConstants a -> LoopState -> Maybe (Dict (List String) Int) -> Bool
+allSufficientlyCovered : LoopConstants a -> LoopState -> Maybe (Dict (Array String) Int) -> Bool
 allSufficientlyCovered c state normalizedDistributionCount =
-    Maybe.map2 Tuple.pair
+    Maybe.map2 (\first second -> { first = first, second = second })
         normalizedDistributionCount
         (Test.Distribution.Internal.getExpectedDistributions c.distribution)
         |> Maybe.andThen
-            (\( distributionCount, expectedDistributions ) ->
+            (\{ first = distributionCount, second = expectedDistributions } ->
                 let
                     expectedDistributions_ : Dict String ExpectedDistribution
                     expectedDistributions_ =
-                        Dict.fromList expectedDistributions
+                        Dict.fromArray expectedDistributions
                 in
                 distributionCount
                     -- Needs normalized distribution count:
-                    |> Dict.toList
-                    |> List.filterMap
-                        (\( labels, count ) ->
+                    |> Dict.toArray
+                    |> Array.filterMap
+                        (\{ key = labels, value = count } ->
                             case labels of
                                 [ onlyLabel ] ->
-                                    Just ( onlyLabel, count )
+                                    Just { label = onlyLabel, count = count }
 
                                 _ ->
                                     Nothing
                         )
                     |> Maybe.traverse
-                        (\( labels, count ) ->
-                            Dict.get labels expectedDistributions_
-                                |> Maybe.map (\expectedDistribution -> ( labels, count, expectedDistribution ))
+                        (\{ label, count } ->
+                            Dict.get label expectedDistributions_
+                                |> Maybe.map (\expectedDistribution -> { label = label, count = count, expectedDistribution = expectedDistribution })
                         )
                     |> Maybe.map
-                        (List.all
-                            (\( _, count, expectedDistribution ) ->
+                        (Array.all
+                            (\{ count, expectedDistribution } ->
                                 case expectedDistribution of
                                     -- Zero and MoreThanZero will get checked in the Success case
                                     Zero ->
@@ -290,16 +290,16 @@ allSufficientlyCovered c state normalizedDistributionCount =
         |> Maybe.withDefault False
 
 
-findBadZeroRelatedCase : LoopConstants a -> LoopState -> Maybe (Dict (List String) Int) -> Maybe DistributionFailure
+findBadZeroRelatedCase : LoopConstants a -> LoopState -> Maybe (Dict (Array String) Int) -> Maybe DistributionFailure
 findBadZeroRelatedCase c state normalizedDistributionCount =
-    Maybe.map2 Tuple.pair
+    Maybe.map2 (\first second -> { first = first, second = second })
         normalizedDistributionCount
         (Test.Distribution.Internal.getExpectedDistributions c.distribution)
         |> Maybe.andThen
-            (\( distributionCount, expectedDistributions ) ->
+            (\{ first = distributionCount, second = expectedDistributions } ->
                 expectedDistributions
-                    |> List.find
-                        (\( label, expectedDistribution ) ->
+                    |> Array.findFirst
+                        (\{ label, expectedDistribution } ->
                             case expectedDistribution of
                                 Zero ->
                                     -- TODO short-circuit Zero sooner: as soon as we increment its counter, during runNTimes.
@@ -318,7 +318,7 @@ findBadZeroRelatedCase c state normalizedDistributionCount =
                                     False
                         )
                     |> Maybe.andThen
-                        (\( label, expectedDistribution ) ->
+                        (\{ label, expectedDistribution } ->
                             Dict.get [ label ] distributionCount
                                 |> Maybe.map
                                     (\count ->
@@ -333,34 +333,34 @@ findBadZeroRelatedCase c state normalizedDistributionCount =
             )
 
 
-findInsufficientlyCoveredLabel : LoopConstants a -> LoopState -> Maybe (Dict (List String) Int) -> Maybe DistributionFailure
+findInsufficientlyCoveredLabel : LoopConstants a -> LoopState -> Maybe (Dict (Array String) Int) -> Maybe DistributionFailure
 findInsufficientlyCoveredLabel c state normalizedDistributionCount =
-    Maybe.map2 Tuple.pair
+    Maybe.map2 (\first second -> { first = first, second = second })
         normalizedDistributionCount
         (Test.Distribution.Internal.getExpectedDistributions c.distribution)
         |> Maybe.andThen
-            (\( distributionCount, expectedDistributions ) ->
+            (\{ first = distributionCount, second = expectedDistributions } ->
                 let
                     expectedDistributions_ : Dict String ExpectedDistribution
                     expectedDistributions_ =
-                        Dict.fromList expectedDistributions
+                        Dict.fromArray expectedDistributions
                 in
                 -- TODO loop ExpectedDistributions instead of looping the label combinations?
                 distributionCount
                     -- Needs normalized distribution count:
-                    |> Dict.toList
-                    |> List.filterMap
-                        (\( labels, count ) ->
+                    |> Dict.toArray
+                    |> Array.filterMap
+                        (\{ key = labels, value = count } ->
                             case labels of
                                 [ onlyLabel ] ->
                                     Dict.get onlyLabel expectedDistributions_
-                                        |> Maybe.map (\expectedDistribution -> ( onlyLabel, count, expectedDistribution ))
+                                        |> Maybe.map (\expectedDistribution -> { label = onlyLabel, count = count, expectedDistribution = expectedDistribution })
 
                                 _ ->
                                     Nothing
                         )
-                    |> List.find
-                        (\( _, count, expectedDistribution ) ->
+                    |> Array.findFirst
+                        (\{ count, expectedDistribution } ->
                             case expectedDistribution of
                                 Zero ->
                                     False
@@ -372,7 +372,7 @@ findInsufficientlyCoveredLabel c state normalizedDistributionCount =
                                     Test.Distribution.Internal.insufficientlyCovered state.runsElapsed count (n / 100)
                         )
                     |> Maybe.map
-                        (\( label, count, expectedDistribution ) ->
+                        (\{ label, count, expectedDistribution } ->
                             { label = label
                             , actualPercentage = toFloat count * 100 / toFloat state.runsElapsed
                             , expectedDistribution = expectedDistribution
@@ -383,7 +383,7 @@ findInsufficientlyCoveredLabel c state normalizedDistributionCount =
             )
 
 
-distributionFailRunResult : Maybe (Dict (List String) Int) -> DistributionFailure -> RunResult
+distributionFailRunResult : Maybe (Dict (Array String) Int) -> DistributionFailure -> RunResult
 distributionFailRunResult normalizedDistributionCount failedLabel =
     case normalizedDistributionCount of
         Nothing ->
@@ -476,10 +476,10 @@ runOnce c state =
                 Nothing ->
                     stepSeed state.currentSeed
 
-        ( maybeFailure, newDistributionCounter ) =
+        { failure = maybeFailure, distributionCount = newDistributionCounter } =
             case genResult of
                 Rejected { reason } ->
-                    ( Just
+                    { failure = Just
                         { given = Nothing
                         , expectation =
                             Test.Expectation.fail
@@ -487,8 +487,8 @@ runOnce c state =
                                 , reason = Invalid InvalidFuzzer
                                 }
                         }
-                    , state.distributionCount
-                    )
+                    , distributionCount = state.distributionCount
+                    }
 
                 Generated { prng, value } ->
                     let
@@ -502,17 +502,17 @@ runOnce c state =
                                 , expectation = c.testFn value
                                 }
 
-                        distributionCounter : Maybe (Dict (List String) Int)
+                        distributionCounter : Maybe (Dict (Array String) Int)
                         distributionCounter =
                             Maybe.map2
                                 (\labels old ->
                                     let
-                                        foundLabels : List String
+                                        foundLabels : Array String
                                         foundLabels =
                                             labels
-                                                |> List.filterMap
-                                                    (\( label, predicate ) ->
-                                                        if predicate value then
+                                                |> Array.filterMap
+                                                    (\{ label, fn } ->
+                                                        if fn value then
                                                             Just label
 
                                                         else
@@ -524,7 +524,7 @@ runOnce c state =
                                 (Test.Distribution.Internal.getDistributionLabels c.distribution)
                                 state.distributionCount
                     in
-                    ( failure, distributionCounter )
+                    { failure = failure, distributionCount = distributionCounter }
     in
     { state
         | failure = maybeFailure
@@ -534,7 +534,7 @@ runOnce c state =
     }
 
 
-includeCombinationsInBaseCounts : Dict (List String) Int -> Dict (List String) Int
+includeCombinationsInBaseCounts : Dict (Array String) Int -> Dict (Array String) Int
 includeCombinationsInBaseCounts distribution =
     distribution
         |> Dict.map
@@ -542,13 +542,13 @@ includeCombinationsInBaseCounts distribution =
                 case labels of
                     [ single ] ->
                         let
-                            combinations : List Int
+                            combinations : Array Int
                             combinations =
                                 distribution
-                                    |> Dict.filter (\k _ -> List.length k > 1 && List.member single k)
+                                    |> Dict.filter (\k _ -> Array.length k > 1 && Array.member single k)
                                     |> Dict.values
                         in
-                        count + List.sum combinations
+                        count + Array.foldl (+) 0 combinations
 
                     _ ->
                         count
@@ -580,7 +580,7 @@ stepSeed : Random.Seed -> Random.Seed
 stepSeed seed =
     seed
         |> Random.step (Random.int 0 0)
-        |> Tuple.second
+        |> .seed
 
 
 testGeneratedValue : Simplify.State a -> Maybe Failure
@@ -596,7 +596,7 @@ testGeneratedValue state =
 findSimplestFailure : Simplify.State a -> Failure
 findSimplestFailure state =
     let
-        ( simplestValue, _, expectation ) =
+        { value = simplestValue, expectation } =
             Simplify.simplify state
     in
     { given = Just <| Test.Internal.toString simplestValue

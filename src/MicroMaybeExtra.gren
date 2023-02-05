@@ -1,21 +1,21 @@
 module MicroMaybeExtra exposing (traverse)
 
 
-traverse : (a -> Maybe b) -> List a -> Maybe (List b)
+traverse : (a -> Maybe b) -> Array a -> Maybe (Array b)
 traverse f list =
     traverseHelp f list []
 
 
-traverseHelp : (a -> Maybe b) -> List a -> List b -> Maybe (List b)
+traverseHelp : (a -> Maybe b) -> Array a -> Array b -> Maybe (Array b)
 traverseHelp f list acc =
-    case list of
-        head :: tail ->
-            case f head of
+    case Array.popFirst list of
+        Just { first, rest } ->
+            case f first of
                 Just a ->
-                    traverseHelp f tail (a :: acc)
+                    traverseHelp f rest (Array.pushFirst a acc)
 
                 Nothing ->
                     Nothing
 
-        [] ->
-            Just (List.reverse acc)
+        Nothing ->
+            Just (Array.reverse acc)

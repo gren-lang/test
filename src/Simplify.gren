@@ -29,6 +29,7 @@ import GenResult exposing (GenResult(..))
 import PRNG
 import RandomRun exposing (Chunk, RandomRun)
 import Simplify.Cmd exposing (SimplifyCmd, SimplifyCmdType(..))
+import Math
 import Test.Expectation exposing (Expectation(..))
 
 
@@ -345,7 +346,7 @@ minimizeFloat { leftIndex } state =
                                     , updateRun =
                                         \newExponent accRun ->
                                             let
-                                                { newHi, newLo } =
+                                                { hi = newHi, lo = newLo } =
                                                     Fuzz.Float.setExponent newExponent { hi = hi, lo = lo }
                                             in
                                             accRun
@@ -376,7 +377,7 @@ minimizeFloat { leftIndex } state =
                                     , updateRun =
                                         \newMantissa accRun ->
                                             let
-                                                { newHi, newLo } =
+                                                { hi = newHi, lo = newLo } =
                                                     Fuzz.Float.setMantissa newMantissa { hi = hi, lo = lo }
                                             in
                                             accRun
@@ -558,7 +559,7 @@ binarySearchLoop old ({ low, high, state, updateRun } as options) =
                    converts to 32bit and has caused this binaryShrinkLoop inside
                    MinimizeFloat to loop infinitely in the past.
                 -}
-                low + round ((toFloat high - toFloat low) / 2)
+                low + Math.round ((toFloat high - toFloat low) / 2)
 
             newRun =
                 updateRun mid options.state.randomRun
