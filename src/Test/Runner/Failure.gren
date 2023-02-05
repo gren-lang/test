@@ -38,7 +38,7 @@ Test runners should report these to the user in whatever format is appropriate.
 
 -}
 type InvalidReason
-    = EmptyList
+    = EmptyArray
     | NonpositiveFuzzCount
     | InvalidFuzzer
     | BadDescription

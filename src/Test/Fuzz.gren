@@ -251,7 +251,7 @@ allSufficientlyCovered c state normalizedDistributionCount =
                 let
                     expectedDistributions_ : Dict String ExpectedDistribution
                     expectedDistributions_ =
-                        Dict.fromArray expectedDistributions
+                        Dict.fromArray <| Array.map (\{ label, expectedDistribution } -> { key = label, value = expectedDistribution }) expectedDistributions
                 in
                 distributionCount
                     -- Needs normalized distribution count:
@@ -343,7 +343,7 @@ findInsufficientlyCoveredLabel c state normalizedDistributionCount =
                 let
                     expectedDistributions_ : Dict String ExpectedDistribution
                     expectedDistributions_ =
-                        Dict.fromArray expectedDistributions
+                        Dict.fromArray <| Array.map (\{ label, expectedDistribution } -> { key = label, value = expectedDistribution }) expectedDistributions
                 in
                 -- TODO loop ExpectedDistributions instead of looping the label combinations?
                 distributionCount

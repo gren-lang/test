@@ -2,7 +2,7 @@ module Expect exposing
     ( Expectation, equal, notEqual, all
     , lessThan, atMost, greaterThan, atLeast
     , FloatingPointTolerance(..), within, notWithin
-    , ok, err, equalLists, equalDicts, equalSets
+    , ok, err, equalArrays, equalDicts, equalSets
     , pass, fail, onFail
     )
 
@@ -40,7 +40,7 @@ or both. For an in-depth look, see our [Guide to Floating Point Comparison](#gui
 
 ## Collections
 
-@docs ok, err, equalLists, equalDicts, equalSets
+@docs ok, err, equalArrays, equalDicts, equalSets
 
 
 ## Customizing
@@ -104,6 +104,7 @@ Another example is comparing values that are on either side of zero. `0.0001` is
 
 import Dict exposing (Dict)
 import Set exposing (Set)
+import Math
 import Test.Distribution
 import Test.Expectation
 import Test.Internal as Internal
@@ -119,7 +120,7 @@ type alias Expectation =
 
 {-| Passes if the arguments are equal.
 
-    Expect.equal 0 (List.length [])
+    Expect.equal 0 (Array.length [])
 
     -- Passes because (0 == 0) is True
 
@@ -177,7 +178,7 @@ notEqual =
 
 {-| Passes if the second argument is less than the first.
 
-    Expect.lessThan 1 (List.length [])
+    Expect.lessThan 1 (Array.length [])
 
     -- Passes because (0 < 1) is True
 
@@ -185,7 +186,7 @@ Failures resemble code written in pipeline style, so you can tell
 which argument is which:
 
     -- Fails because (0 < -1) is False
-    List.length []
+    Array.length []
         |> Expect.lessThan -1
 
 
@@ -209,7 +210,7 @@ lessThan =
 
 {-| Passes if the second argument is less than or equal to the first.
 
-    Expect.atMost 1 (List.length [])
+    Expect.atMost 1 (Array.length [])
 
     -- Passes because (0 <= 1) is True
 
@@ -217,7 +218,7 @@ Failures resemble code written in pipeline style, so you can tell
 which argument is which:
 
     -- Fails because (0 <= -3) is False
-    List.length []
+    Array.length []
         |> Expect.atMost -3
 
     {-
@@ -238,7 +239,7 @@ atMost =
 
 {-| Passes if the second argument is greater than the first.
 
-    Expect.greaterThan -2 List.length []
+    Expect.greaterThan -2 Array.length []
 
     -- Passes because (0 > -2) is True
 
@@ -246,7 +247,7 @@ Failures resemble code written in pipeline style, so you can tell
 which argument is which:
 
     -- Fails because (0 > 1) is False
-    List.length []
+    Array.length []
         |> Expect.greaterThan 1
 
     {-
@@ -267,7 +268,7 @@ greaterThan =
 
 {-| Passes if the second argument is greater than or equal to the first.
 
-    Expect.atLeast -2 (List.length [])
+    Expect.atLeast -2 (Array.length [])
 
     -- Passes because (0 >= -2) is True
 
@@ -275,7 +276,7 @@ Failures resemble code written in pipeline style, so you can tell
 which argument is which:
 
     -- Fails because (0 >= 3) is False
-    List.length []
+    Array.length []
         |> Expect.atLeast 3
 
     {-
@@ -446,7 +447,7 @@ err result =
 
     -- Passes
     [ 1, 2, 3 ]
-        |> Expect.equalLists [ 1, 2, 3 ]
+        |> Expect.equalArrays [ 1, 2, 3 ]
 
 Failures resemble code written in pipeline style, so you can tell
 which argument is which, and reports which index the lists first
@@ -454,14 +455,14 @@ differed at or which list was longer:
 
     -- Fails
     [ 1, 2, 4, 6 ]
-        |> Expect.equalLists [ 1, 2, 5 ]
+        |> Expect.equalArrays [ 1, 2, 5 ]
 
     {-
 
     [1,2,4,6]
     first diff at index index 2: +`4`, -`5`
     ╷
-    │ Expect.equalLists
+    │ Expect.equalArrays
     ╵
     first diff at index index 2: +`5`, -`4`
     [1,2,5]
@@ -469,14 +470,14 @@ differed at or which list was longer:
     -}
 
 -}
-equalLists : List a -> List a -> Expectation
-equalLists expected actual =
+equalArrays : Array a -> Array a -> Expectation
+equalArrays expected actual =
     if expected == actual then
         pass
 
     else
-        { description = "Expect.equalLists"
-        , reason = ListDiff (List.map Internal.toString expected) (List.map Internal.toString actual)
+        { description = "Expect.equalArrays"
+        , reason = ArrayDiff (Array.map Internal.toString expected) (Array.map Internal.toString actual)
         }
             |> Test.Expectation.fail
 
@@ -484,33 +485,33 @@ equalLists expected actual =
 {-| Passes if the arguments are equal dicts.
 
     -- Passes
-    Dict.fromList [ ( 1, "one" ), ( 2, "two" ) ]
-        |> Expect.equalDicts (Dict.fromList [ ( 1, "one" ), ( 2, "two" ) ])
+    Dict.fromArray [ ( 1, "one" ), ( 2, "two" ) ]
+        |> Expect.equalDicts (Dict.fromArray [ ( 1, "one" ), ( 2, "two" ) ])
 
 Failures resemble code written in pipeline style, so you can tell
 which argument is which, and reports which keys were missing from
 or added to each dict:
 
     -- Fails
-    (Dict.fromList [ ( 1, "one" ), ( 2, "too" ) ])
-        |> Expect.equalDicts (Dict.fromList [ ( 1, "one" ), ( 2, "two" ), ( 3, "three" ) ])
+    (Dict.fromArray [ ( 1, "one" ), ( 2, "too" ) ])
+        |> Expect.equalDicts (Dict.fromArray [ ( 1, "one" ), ( 2, "two" ), ( 3, "three" ) ])
 
     {-
 
-    Dict.fromList [(1,"one"),(2,"too")]
+    Dict.fromArray [(1,"one"),(2,"too")]
     diff: -[ (2,"two"), (3,"three") ] +[ (2,"too") ]
     ╷
     │ Expect.equalDicts
     ╵
     diff: +[ (2,"two"), (3,"three") ] -[ (2,"too") ]
-    Dict.fromList [(1,"one"),(2,"two"),(3,"three")]
+    Dict.fromArray [(1,"one"),(2,"two"),(3,"three")]
 
     -}
 
 -}
 equalDicts : Dict comparable a -> Dict comparable a -> Expectation
 equalDicts expected actual =
-    if Dict.toList expected == Dict.toList actual then
+    if Dict.toArray expected == Dict.toArray actual then
         pass
 
     else
@@ -520,7 +521,7 @@ equalDicts expected actual =
                     diffs
 
                 else
-                    ( k, v ) :: diffs
+                    Array.pushFirst { key = k, value = v } diffs
 
             missingKeys =
                 Dict.foldr (differ actual) [] expected
@@ -534,44 +535,44 @@ equalDicts expected actual =
 {-| Passes if the arguments are equal sets.
 
     -- Passes
-    Set.fromList [ 1, 2 ]
-        |> Expect.equalSets (Set.fromList [ 1, 2 ])
+    Set.fromArray [ 1, 2 ]
+        |> Expect.equalSets (Set.fromArray [ 1, 2 ])
 
 Failures resemble code written in pipeline style, so you can tell
 which argument is which, and reports which keys were missing from
 or added to each set:
 
     -- Fails
-    (Set.fromList [ 1, 2, 4, 6 ])
-        |> Expect.equalSets (Set.fromList [ 1, 2, 5 ])
+    (Set.fromArray [ 1, 2, 4, 6 ])
+        |> Expect.equalSets (Set.fromArray [ 1, 2, 5 ])
 
     {-
 
-    Set.fromList [1,2,4,6]
+    Set.fromArray [1,2,4,6]
     diff: -[ 5 ] +[ 4, 6 ]
     ╷
     │ Expect.equalSets
     ╵
     diff: +[ 5 ] -[ 4, 6 ]
-    Set.fromList [1,2,5]
+    Set.fromArray [1,2,5]
 
     -}
 
 -}
 equalSets : Set comparable -> Set comparable -> Expectation
 equalSets expected actual =
-    if Set.toList expected == Set.toList actual then
+    if Set.toArray expected == Set.toArray actual then
         pass
 
     else
         let
             missingKeys =
                 Set.diff expected actual
-                    |> Set.toList
+                    |> Set.toArray
 
             extraKeys =
                 Set.diff actual expected
-                    |> Set.toList
+                    |> Set.toArray
         in
         reportCollectionFailure "Expect.equalSets" expected actual missingKeys extraKeys
 
@@ -646,14 +647,14 @@ will always return a failed expectation no matter what else it is passed.
         [ Expect.greaterThan -2
         , Expect.lessThan 5
         ]
-        (List.length [])
+        (Array.length [])
     -- Passes because (0 > -2) is True and (0 < 5) is also True
 
 Failures resemble code written in pipeline style, so you can tell
 which argument is which:
 
     -- Fails because (0 < -10) is False
-    List.length []
+    Array.length []
         |> Expect.all
             [ Expect.greaterThan -2
             , Expect.lessThan -10
@@ -668,11 +669,11 @@ which argument is which:
     -}
 
 -}
-all : List (subject -> Expectation) -> subject -> Expectation
+all : Array (subject -> Expectation) -> subject -> Expectation
 all list query =
-    if List.isEmpty list then
+    if Array.isEmpty list then
         Test.Expectation.fail
-            { reason = Invalid EmptyList
+            { reason = Invalid EmptyArray
             , description = "Expect.all was given an empty list. You must make at least one expectation to have a valid test!"
             }
 
@@ -680,13 +681,13 @@ all list query =
         allHelp list query
 
 
-allHelp : List (subject -> Expectation) -> subject -> Expectation
+allHelp : Array (subject -> Expectation) -> subject -> Expectation
 allHelp list query =
-    case list of
-        [] ->
+    case Array.popFirst list of
+        Nothing ->
             pass
 
-        check :: rest ->
+        Just { first = check, rest } ->
             case check query of
                 Test.Expectation.Pass _ ->
                     allHelp rest query
@@ -699,14 +700,14 @@ allHelp list query =
 {---- Private helper functions ----}
 
 
-reportCollectionFailure : String -> a -> b -> List c -> List d -> Expectation
+reportCollectionFailure : String -> a -> b -> Array c -> Array d -> Expectation
 reportCollectionFailure comparison expected actual missingKeys extraKeys =
     { description = comparison
     , reason =
         { expected = Internal.toString expected
         , actual = Internal.toString actual
-        , extra = List.map Internal.toString extraKeys
-        , missing = List.map Internal.toString missingKeys
+        , extra = Array.map Internal.toString extraKeys
+        , missing = Array.map Internal.toString missingKeys
         }
             |> CollectionDiff
     }
@@ -815,7 +816,7 @@ withinCompare tolerance a b =
             a - absolute tolerance <= b && b <= a + absolute tolerance
 
         withinRelativeTolerance =
-            (a - abs (a * relative tolerance) <= b && b <= a + abs (a * relative tolerance))
-                || (b - abs (b * relative tolerance) <= a && a <= b + abs (b * relative tolerance))
+            (a - Math.abs (a * relative tolerance) <= b && b <= a + Math.abs (a * relative tolerance))
+                || (b - Math.abs (b * relative tolerance) <= a && a <= b + Math.abs (b * relative tolerance))
     in
     (a == b) || withinAbsoluteTolerance || withinRelativeTolerance

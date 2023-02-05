@@ -107,17 +107,17 @@ fromTest runs seed test =
         if Array.isEmpty distribution.only then
             if countAllRunnables distribution.skipped == 0 then
                 distribution.all
-                    |> Array.concatMap fromRunnableTree
+                    |> Array.flatMap fromRunnableTree
                     |> Plain
 
             else
                 distribution.all
-                    |> Array.concatMap fromRunnableTree
+                    |> Array.flatMap fromRunnableTree
                     |> Skipping
 
         else
             distribution.only
-                |> Array.concatMap fromRunnableTree
+                |> Array.flatMap fromRunnableTree
                 |> Only
 
 
@@ -166,7 +166,7 @@ fromRunnableTreeHelp labels runner =
             ]
 
         Labeled label subRunner ->
-            fromRunnableTreeHelp (label :: labels) subRunner
+            fromRunnableTreeHelp (Array.pushFirst label labels) subRunner
 
 
 type alias Distribution =
@@ -245,7 +245,7 @@ distributeSeedsHelp hashed runs seed test =
 
         Internal.ElmTestVariant__FuzzTest aRun ->
             let
-                { first = firstSeed, next = nextSeed } =
+                { value = firstSeed, seed = nextSeed } =
                     Random.step Random.independentSeed seed
             in
             { seed = nextSeed
@@ -283,7 +283,7 @@ distributeSeedsHelp hashed runs seed test =
                         seed
                             -- Convert the Seed back to an Int
                             |> Random.step (Random.int 0 Random.maxInt)
-                            |> Tuple.first
+                            |> .value
 
                     hashedSeed =
                         description
@@ -514,7 +514,7 @@ drive the simplification process: if a simplified value passes the test, it will
 be discarded. In this sense, you will get the simplest value that still fails
 your test.
 -}
-simplify : (a -> Expectation) -> { value : a, simpliable : Simplifiable a } -> Maybe { value : a, simplifiable : Simplifiable a }
+simplify : (a -> Expectation) -> { value : a, simplifiable : Simplifiable a } -> Maybe { value : a, simplifiable : Simplifiable a }
 simplify getExpectation { value = value, simplifiable = Simplifiable { randomRun, fuzzer } } =
     let
         { value = newValue, run = newRandomRun } =
