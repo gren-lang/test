@@ -119,17 +119,17 @@ fuzzerSpecificationTests =
             , simplifiesTowards "list written in flip-a-coin way"
                 [ 1001 ]
                 (Fuzz.list (Fuzz.intRange 0 10000))
-                (\list -> List.sum list <= 1000)
+                (\list -> Array.sum list <= 1000)
             , simplifiesTowards "list written in length-first way"
                 [ 1001 ]
                 (Fuzz.intRange 0 10
                     |> Fuzz.andThen
                         (\length ->
                             let
-                                go : Int -> List Int -> Fuzzer (List Int)
+                                go : Int -> Array Int -> Fuzzer (Array Int)
                                 go left acc =
                                     if left <= 0 then
-                                        Fuzz.constant (List.reverse acc)
+                                        Fuzz.constant (Array.reverse acc)
 
                                     else
                                         Fuzz.intRange 0 10000
@@ -138,7 +138,7 @@ fuzzerSpecificationTests =
                             go length []
                         )
                 )
-                (\list -> List.sum list <= 1000)
+                (\list -> Array.sum list <= 1000)
             ]
         , describe "Fuzzers"
             [ describe "bool"
@@ -153,10 +153,6 @@ fuzzerSpecificationTests =
                 , canGenerate GT Fuzz.order
                 , simplifiesTowards "simplest" LT Fuzz.order fullySimplify
                 , simplifiesTowards "next simplest" EQ Fuzz.order (\x -> x == LT)
-                ]
-            , describe "unit"
-                [ canGenerate () Fuzz.unit
-                , simplifiesTowards "()" () Fuzz.unit fullySimplify
                 ]
             , describe "constant"
                 [ passes "Returns what you give it - Int"
@@ -378,7 +374,7 @@ fuzzerSpecificationTests =
                 , canGenerate 42 (Fuzz.oneOfValues [ 1, 42 ])
                 , cannotGenerateSatisfying "not in list"
                     (Fuzz.oneOfValues [ 1, 42 ])
-                    (\n -> not <| List.member n [ 1, 42 ])
+                    (\n -> not <| Array.member n [ 1, 42 ])
                 , passes "One value -> picks it"
                     (Fuzz.oneOfValues [ 42 ])
                     (\n -> n == 42)
@@ -411,7 +407,7 @@ fuzzerSpecificationTests =
                  , canGenerate 2 fuzzer
                  , cannotGenerateSatisfying "not in the range"
                     fuzzer
-                    (\n -> not <| List.member n [ -2, -1, 0, 2 ])
+                    (\n -> not <| Array.member n [ -2, -1, 0, 2 ])
                  , passes "One fuzzer -> picks it"
                     (Fuzz.oneOf [ Fuzz.constant 42 ])
                     (\n -> n == 42)
@@ -443,7 +439,7 @@ fuzzerSpecificationTests =
                  , canGenerate 42 fuzzer
                  , cannotGenerateSatisfying "not in the range"
                     fuzzer
-                    (\n -> not <| List.member n [ 1, 42 ])
+                    (\n -> not <| Array.member n [ 1, 42 ])
                  , passes "One value -> picks it"
                     (Fuzz.frequencyValues [ ( 0.7, 42 ) ])
                     (\n -> n == 42)
@@ -489,7 +485,7 @@ fuzzerSpecificationTests =
                  , canGenerate 2 fuzzer
                  , cannotGenerateSatisfying "not in the range"
                     fuzzer
-                    (\n -> not <| List.member n [ -2, -1, 0, 2 ])
+                    (\n -> not <| Array.member n [ -2, -1, 0, 2 ])
                  , passes "One fuzzer -> picks it"
                     (Fuzz.frequency [ ( 0.7, Fuzz.constant 42 ) ])
                     (\n -> n == 42)
@@ -523,7 +519,7 @@ fuzzerSpecificationTests =
                 [ canGenerateWith { runs = 1000 } [] (Fuzz.list Fuzz.unit)
                 , canGenerateSatisfying "non-empty list"
                     (Fuzz.list Fuzz.unit)
-                    (not << List.isEmpty)
+                    (not << Array.isEmpty)
                 , simplifiesTowards "simplest" [] (Fuzz.list Fuzz.int) fullySimplify
                 , simplifiesTowardsWith { runs = 2000 } "next simplest" [ 0 ] (Fuzz.list Fuzz.int) (\x -> x == [])
                 , simplifiesTowardsMany "All lists are sorted"
@@ -531,15 +527,15 @@ fuzzerSpecificationTests =
                     , [ 1, 0 ]
                     ]
                     (Fuzz.list Fuzz.int)
-                    (\list -> list == List.sort list)
+                    (\list -> list == Array.sort list)
                 ]
             , describe "listOfLength"
                 [ passes "always length 3"
                     (Fuzz.listOfLength 3 Fuzz.unit)
-                    (\list -> List.length list == 3)
+                    (\list -> Array.length list == 3)
                 , passes "negative length -> empty list"
                     (Fuzz.listOfLength -3 Fuzz.unit)
-                    List.isEmpty
+                    Array.isEmpty
                 , simplifiesTowards "simplest" [ 0, 0, 0 ] (Fuzz.listOfLength 3 Fuzz.int) fullySimplify
                 , simplifiesTowards "next simplest" [ 0, 0, 1 ] (Fuzz.listOfLength 3 Fuzz.int) (\x -> x == [ 0, 0, 0 ])
                 ]
@@ -549,7 +545,7 @@ fuzzerSpecificationTests =
                     (\list ->
                         let
                             length =
-                                List.length list
+                                Array.length list
                         in
                         length >= 2 && length <= 5
                     )
@@ -563,7 +559,7 @@ fuzzerSpecificationTests =
                     (Fuzz.array Fuzz.unit)
                     (not << Array.isEmpty)
                 , simplifiesTowards "simplest" Array.empty (Fuzz.array Fuzz.int) fullySimplify
-                , simplifiesTowards "next simplest" (Array.fromList [ 0 ]) (Fuzz.array Fuzz.int) (\x -> Array.isEmpty x)
+                , simplifiesTowards "next simplest" (Array.fromArray [ 0 ]) (Fuzz.array Fuzz.int) (\x -> Array.isEmpty x)
                 ]
             , describe "uniformInt"
                 [ cannotGenerateSatisfying "any Infinity"
@@ -639,7 +635,7 @@ fuzzerSpecificationTests =
                 [ canGenerate () (Fuzz.lazy (\() -> Fuzz.unit))
                 , canGenerate 1 (Fuzz.lazy (\() -> Fuzz.constant 1))
                 ]
-            , describe "shuffledList"
+            , describe "shuffledArray"
                 [ passes
                     "contains the exact same values as in original list"
                     (Fuzz.list Fuzz.int
@@ -647,25 +643,25 @@ fuzzerSpecificationTests =
                             (\ints ->
                                 Fuzz.pair
                                     (Fuzz.constant ints)
-                                    (Fuzz.shuffledList ints)
+                                    (Fuzz.shuffledArray ints)
                             )
                     )
-                    (\( originalList, shuffledList ) ->
-                        List.sort originalList == List.sort shuffledList
+                    (\( originalArray, shuffledArray ) ->
+                        Array.sort originalArray == Array.sort shuffledArray
                     )
-                , canGenerate [ 30, 80, 50 ] (Fuzz.shuffledList [ 50, 30, 80 ])
+                , canGenerate [ 30, 80, 50 ] (Fuzz.shuffledArray [ 50, 30, 80 ])
                 , simplifiesTowards "simplest = original ordering"
                     [ 50, 30, 80 ]
-                    (Fuzz.shuffledList [ 50, 30, 80 ])
+                    (Fuzz.shuffledArray [ 50, 30, 80 ])
                     fullySimplify
                 , passes "list sort is stable"
                     (Fuzz.listOfLength 5 Fuzz.int)
                     (\list ->
                         let
                             sortBy indexes xs =
-                                List.map2 Tuple.pair indexes xs
-                                    |> List.sortBy Tuple.first
-                                    |> List.map Tuple.second
+                                Array.map2 Tuple.pair indexes xs
+                                    |> Array.sortBy Tuple.first
+                                    |> Array.map Tuple.second
                         in
                         sortBy [ 0, 0, 0, 0, 0 ] list == sortBy [ 0, 1, 2, 3, 4 ] list
                     )
@@ -951,7 +947,7 @@ fuzzerSpecificationTests =
                     (Fuzz.bool
                         |> Fuzz.andThen (\bool -> Fuzz.list (Fuzz.constant bool))
                     )
-                    (\list -> List.length list < 3)
+                    (\list -> Array.length list < 3)
                 , simplifiesTowards "LHS: constant int"
                     0
                     (Fuzz.int
@@ -970,13 +966,13 @@ fuzzerSpecificationTests =
                     (Fuzz.int
                         |> Fuzz.andThen (\_ -> Fuzz.list Fuzz.int)
                     )
-                    (\x -> List.length x < 3)
+                    (\x -> Array.length x < 3)
                 , simplifiesTowards "both LHS and RHS at the same time"
                     [ 0, 0, 0 ]
                     (Fuzz.int
                         |> Fuzz.andThen (\x -> Fuzz.list (Fuzz.constant x))
                     )
-                    (\x -> List.length x < 3)
+                    (\x -> Array.length x < 3)
                 , simplifiesTowards
                     "rectangles"
                     [ [ 'a', 'b' ] ]
@@ -989,7 +985,7 @@ fuzzerSpecificationTests =
                                     )
                             )
                     )
-                    (\lists -> List.head lists /= Just [ 'a', 'b' ])
+                    (\lists -> Array.head lists /= Just [ 'a', 'b' ])
                 ]
             , describe "weightedBool"
                 [ canGenerate False (Fuzz.weightedBool 0.5)

@@ -9,20 +9,20 @@ Note that this always uses an initial seed of 902101337, since it can't do effec
 -}
 
 import Platform
+import Node.Program as Program exposing (Program)
 import Runner.Log
 import Runner.String exposing (Summary)
 import SeedTests
 import Tests
 
 
-main : Program () () msg
+main : Program {} {}
 main =
     let
         program =
-            Platform.worker
-                { init = \() -> ( (), Cmd.none )
-                , update = \_ () -> ( (), Cmd.none )
-                , subscriptions = \() -> Sub.none
+            Program.define
+                { init = Program.startProgram { model = {}, command = {} }
+                , update = \_ _ -> { model = {}, command = {} }
                 }
     in
     runAllTests program
@@ -36,11 +36,11 @@ runAllTests a =
 
         _ =
             [ [ Runner.String.run Tests.all ]
-            , List.map runSeedTest SeedTests.tests
-            , List.map (runSeedTest >> removeAutoFail) SeedTests.noAutoFail
+            , Array.map runSeedTest SeedTests.tests
+            , Array.map (runSeedTest >> removeAutoFail) SeedTests.noAutoFail
             ]
-                |> List.concat
-                |> List.foldl combineSummaries emptySummary
+                |> Array.flatten
+                |> Array.foldl combineSummaries emptySummary
                 |> Runner.Log.logOutput
     in
     a
@@ -48,7 +48,11 @@ runAllTests a =
 
 emptySummary : Summary
 emptySummary =
-    { output = "", passed = 0, failed = 0, autoFail = Nothing }
+    { output = ""
+    , passed = 0
+    , failed = 0
+    , autoFail = Nothing
+    }
 
 
 {-| Considers autoFail as pass so we can actually write tests about Test.skip
@@ -65,17 +69,17 @@ combineSummaries first second =
     , passed = first.passed + second.passed
     , failed = first.failed + second.failed
     , autoFail =
-        case ( first.autoFail, second.autoFail ) of
-            ( Nothing, Nothing ) ->
+        case { l = first.autoFail, r = second.autoFail } of
+            { l = Nothing, r = Nothing } ->
                 Nothing
 
-            ( Nothing, secondAutoFail ) ->
+            { l = Nothing, r = Just secondAutoFail } ->
                 secondAutoFail
 
-            ( firstAutoFail, Nothing ) ->
+            { l = Just firstAutoFail, r = Nothing } ->
                 firstAutoFail
 
-            ( Just firstAutoFail, Just secondAutoFail ) ->
+            { l = Just firstAutoFail, r = Just secondAutoFail } ->
                 [ firstAutoFail, secondAutoFail ]
                     |> String.join "\n"
                     |> Just

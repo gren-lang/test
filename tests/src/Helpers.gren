@@ -58,7 +58,7 @@ testSimplifyingWith { runs } test =
 
                 Just g ->
                     if String.contains g description then
-                        Ok ()
+                        Ok {}
 
                     else
                         Err <| "Got simplified value " ++ g ++ " but expected " ++ description
@@ -76,13 +76,13 @@ testSimplifyingWith { runs } test =
             let
                 label =
                     runner.labels
-                        |> List.head
+                        |> Array.first
                         |> Maybe.withDefault "No labels??"
             in
             Test.test label <|
-                \() ->
-                    runner.run ()
-                        |> List.head
+                \_ ->
+                    runner.run {}
+                        |> Array.first
                         |> Maybe.map (passToFail handleFailure)
                         |> Maybe.withDefault (Expect.fail "Somehow `testSimplifyingWith` had multiple tests inside")
 
@@ -104,7 +104,7 @@ testFailingWith { runs } test =
                         |> Err
 
                 Just _ ->
-                    Ok ()
+                    Ok {}
 
         seed =
             Random.initialSeed 2242652938
@@ -119,13 +119,13 @@ testFailingWith { runs } test =
             let
                 label =
                     runner.labels
-                        |> List.head
+                        |> Array.first
                         |> Maybe.withDefault "No labels??"
             in
             Test.test label <|
-                \() ->
-                    runner.run ()
-                        |> List.head
+                \_ ->
+                    runner.run {}
+                        |> Array.first
                         |> Maybe.map (passToFail handleFailure)
                         |> Maybe.withDefault (Expect.fail "Somehow `testFailingWith` had multiple tests inside")
 
@@ -138,12 +138,12 @@ expectPass _ =
     Expect.pass
 
 
-testStringLengthIsPreserved : List String -> Expectation
+testStringLengthIsPreserved : Array String -> Expectation
 testStringLengthIsPreserved strings =
     strings
-        |> List.map String.length
-        |> List.sum
-        |> Expect.equal (String.length (List.foldl (++) "" strings))
+        |> Array.map String.length
+        |> Array.foldl (+) 0
+        |> Expect.equal (String.length (Array.foldl (++) "" strings))
 
 
 expectToFail : Expectation -> Expectation
@@ -165,9 +165,9 @@ expectTestToFail test =
     test
         |> Test.Runner.fromTest 100 seed
         |> getRunners
-        |> List.concatMap (\{ run } -> run ())
-        |> List.map (\expectation () -> expectToFail expectation)
-        |> (\expectations -> Expect.all expectations ())
+        |> Array.flatMap (\{ run } -> run {})
+        |> Array.map (\expectation {} -> expectToFail expectation)
+        |> (\expectations -> Expect.all expectations {})
 
 
 passToFail :
@@ -175,7 +175,7 @@ passToFail :
      , description : String
      , given : Maybe String
      }
-     -> Result String ()
+     -> Result String {}
     )
     -> Expectation
     -> Expectation
@@ -190,14 +190,14 @@ passToFail f expectation =
                     f record
     in
     case result of
-        Ok () ->
+        Ok {} ->
             Expect.pass
 
         Err message ->
             Expect.fail message
 
 
-getRunners : SeededRunners -> List Runner
+getRunners : SeededRunners -> Array Runner
 getRunners seededRunners =
     case seededRunners of
         Test.Runner.Plain runners ->
@@ -223,31 +223,31 @@ randomSeedFuzzer =
 
 same : Expectation -> Expectation -> Expectation
 same a b =
-    case ( Test.Runner.getFailureReason a, Test.Runner.getFailureReason b ) of
-        ( Nothing, Nothing ) ->
+    case { l = Test.Runner.getFailureReason a, r = Test.Runner.getFailureReason b } of
+        { l = Nothing, r = Nothing } ->
             Expect.pass
 
-        ( Just _, Just _ ) ->
+        { l = Just _, r = Just _ } ->
             Expect.pass
 
-        ( reasonA, reasonB ) ->
+        { l = reasonA, r = reasonB } ->
             Expect.equal reasonA reasonB
                 |> Expect.onFail "expected both arguments to fail, or both to succeed"
 
 
 different : Expectation -> Expectation -> Expectation
 different a b =
-    case ( Test.Runner.getFailureReason a, Test.Runner.getFailureReason b ) of
-        ( Nothing, Just _ ) ->
+    case { l = Test.Runner.getFailureReason a, r = Test.Runner.getFailureReason b } of
+        { l = Nothing, r = Just _ } ->
             Expect.pass
 
-        ( Just _, Nothing ) ->
+        { l = Just _, r = Nothing } ->
             Expect.pass
 
-        ( Nothing, Nothing ) ->
+        { l = Nothing, r = Nothing } ->
             Expect.fail "expected only one argument to fail, but both passed"
 
-        ( Just reasonA, Just reasonB ) ->
+        { l = Just reasonA, r = Just reasonB } ->
             [ reasonA, reasonB ]
                 |> Expect.equal []
                 |> Expect.onFail "expected only one argument to fail"
@@ -349,17 +349,17 @@ simplifiesTowardsWith runs label value fuzzer fn =
             )
 
 
-simplifiesTowardsMany : String -> List a -> Fuzzer a -> (a -> Bool) -> Test
+simplifiesTowardsMany : String -> Array a -> Fuzzer a -> (a -> Bool) -> Test
 simplifiesTowardsMany =
     simplifiesTowardsManyWith defaultRuns
 
 
-simplifiesTowardsManyWith : { runs : Int } -> String -> List a -> Fuzzer a -> (a -> Bool) -> Test
+simplifiesTowardsManyWith : { runs : Int } -> String -> Array a -> Fuzzer a -> (a -> Bool) -> Test
 simplifiesTowardsManyWith runs label values fuzzer fn =
     let
         valuesString =
             values
-                |> List.map Debug.toString
+                |> Array.map Debug.toString
                 |> String.join "|"
     in
     testSimplifyingWith runs <|
@@ -376,7 +376,7 @@ rejects label fuzzer expectedReason =
     Test.fuzz randomSeedFuzzer ("Rejects: " ++ label) <|
         \seed ->
             case Random.step (Test.Runner.fuzz fuzzer) seed of
-                ( Err reason, _ ) ->
+                { value = Err reason } ->
                     reason
                         |> Expect.equal expectedReason
 

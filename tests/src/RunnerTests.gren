@@ -60,7 +60,7 @@ fromTest =
                     case seededRunners of
                         Only runners ->
                             runners
-                                |> List.length
+                                |> Array.length
                                 |> Expect.equal 2
 
                         val ->
@@ -85,7 +85,7 @@ fromTest =
                     case seededRunners of
                         Only runners ->
                             runners
-                                |> List.length
+                                |> Array.length
                                 |> Expect.equal 1
 
                         val ->
@@ -110,7 +110,7 @@ fromTest =
                     case seededRunners of
                         Skipping runners ->
                             runners
-                                |> List.length
+                                |> Array.length
                                 |> Expect.equal 1
 
                         val ->
@@ -120,7 +120,7 @@ fromTest =
                     case toSeededRunners (Test.only <| test "passes" expectPass) of
                         Only runners ->
                             runners
-                                |> List.length
+                                |> Array.length
                                 |> Expect.equal 1
 
                         val ->
@@ -145,7 +145,7 @@ fromTest =
                     case seededRunners of
                         Skipping runners ->
                             runners
-                                |> List.length
+                                |> Array.length
                                 |> Expect.equal 1
 
                         val ->
@@ -165,7 +165,7 @@ fromTest =
                     case seededRunners of
                         Skipping runners ->
                             runners
-                                |> List.length
+                                |> Array.length
                                 |> Expect.equal 1
 
                         val ->
@@ -175,7 +175,7 @@ fromTest =
                     case toSeededRunners (Test.skip <| test "passes" expectPass) of
                         Skipping runners ->
                             runners
-                                |> List.length
+                                |> Array.length
                                 |> Expect.equal 0
 
                         val ->
@@ -185,7 +185,7 @@ fromTest =
                     case toSeededRunners (test "passes" expectPass) of
                         Plain runners ->
                             runners
-                                |> List.length
+                                |> Array.length
                                 |> Expect.equal 1
 
                         val ->
@@ -193,11 +193,11 @@ fromTest =
             ]
         , describe "catching exceptions"
             [ test "when a test raises an exception, it is turned into a failure" <|
-                \() ->
-                    case toSeededRunners (test "crashes" <| \() -> Debug.todo "crash") of
+                \_ ->
+                    case toSeededRunners (test "crashes" <| \_ -> Debug.todo "crash") of
                         Plain [ runner ] ->
-                            runner.run ()
-                                |> List.head
+                            runner.run {}
+                                |> Array.first
                                 |> Maybe.andThen Test.Runner.getFailureReason
                                 |> Expect.equal
                                     (Just

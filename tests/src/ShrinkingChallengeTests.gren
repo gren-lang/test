@@ -5,6 +5,7 @@ import Helpers exposing (..)
 import Random
 import Set
 import Test exposing (..)
+import Math
 
 
 {-| <https://github.com/jlink/shrinking-challenge>
@@ -13,9 +14,9 @@ shrinkingChallenges : Test
 shrinkingChallenges =
     describe "Shrinking challenges"
         [ reverse
-        , largeUnionList
+        , largeUnionArray
         , calculator
-        , lengthList
+        , lengthArray
         , difference1
         , difference2
         , difference3
@@ -23,7 +24,7 @@ shrinkingChallenges =
         , coupling
         , deletion
         , distinct
-        , nestedLists
+        , nestedArrays
         ]
 
 
@@ -34,8 +35,8 @@ reverse =
     simplifiesTowards
         "reverse"
         [ 0, 1 ]
-        (Fuzz.list Fuzz.int)
-        (\list -> list == List.reverse list)
+        (Fuzz.array Fuzz.int)
+        (\list -> list == Array.reverse list)
 
 
 {-| <https://github.com/jlink/shrinking-challenge/blob/836bafa664659a435ae186eed5b87e941228ae3d/challenges/large_union_list.md>
@@ -43,13 +44,13 @@ reverse =
 Tests that we are able to shrink `[[1],[1],[-1],[2],[-2]]` into `[[0,1,-1,2,-2]]` - manipulate nested lists.
 
 -}
-largeUnionList : Test
-largeUnionList =
+largeUnionArray : Test
+largeUnionArray =
     simplifiesTowards
         "large union list"
         [ [ 0, 1, -1, 2, -2 ] ]
-        (Fuzz.list (Fuzz.list Fuzz.int))
-        (\lists -> Set.size (Set.fromList (List.concat lists)) <= 4)
+        (Fuzz.array (Fuzz.array Fuzz.int))
+        (\lists -> Set.size (Set.fromArray (Array.flatten lists)) <= 4)
 
 
 {-| <https://github.com/jlink/shrinking-challenge/blob/836bafa664659a435ae186eed5b87e941228ae3d/challenges/calculator.md>
@@ -134,17 +135,17 @@ type CalcExpr
 
 {-| <https://github.com/jlink/shrinking-challenge/blob/836bafa664659a435ae186eed5b87e941228ae3d/challenges/lengthlist.md>
 -}
-lengthList : Test
-lengthList =
+lengthArray : Test
+lengthArray =
     simplifiesTowards
-        "lengthList"
+        "lengthArray"
         [ 900 ]
         (Fuzz.intRange 1 100
             |> Fuzz.andThen
-                (\len -> Fuzz.listOfLength len (Fuzz.intRange 0 1000))
+                (\len -> Fuzz.arrayOfLength len (Fuzz.intRange 0 1000))
         )
         (\list ->
-            case List.maximum list of
+            case Array.maximum list of
                 Nothing ->
                     Debug.todo "shouldn't have generated an empty list"
 
@@ -159,12 +160,12 @@ difference1 : Test
 difference1 =
     simplifiesTowardsWith { runs = 10000 }
         "difference1"
-        ( 10, 10 )
+        { first = 10, second = 10 }
         (Fuzz.pair
             (Fuzz.intAtLeast 0)
             (Fuzz.intAtLeast 0)
         )
-        (\( x, y ) -> x < 10 || x /= y)
+        (\{ first = x, second = y } -> x < 10 || x /= y)
 
 
 {-| <https://github.com/jlink/shrinking-challenge/blob/7f8f46f192fbbd25bfe003db1cefdbadf8b0a8ad/challenges/difference.md>
@@ -173,15 +174,15 @@ difference2 : Test
 difference2 =
     simplifiesTowardsWith { runs = 5000 }
         "difference2"
-        ( 10, 6 )
+        { first = 10, second = 6 }
         (Fuzz.pair
             (Fuzz.intAtLeast 0)
             (Fuzz.intAtLeast 0)
         )
-        (\( x, y ) ->
+        (\{ first = x, second = y } ->
             let
                 absDiff =
-                    abs (x - y)
+                    Math.abs (x - y)
             in
             x < 10 || absDiff < 1 || absDiff > 4
         )
@@ -193,12 +194,12 @@ difference3 : Test
 difference3 =
     simplifiesTowardsWith { runs = 5000 }
         "difference3"
-        ( 10, 9 )
+        { first = 10, second = 9 }
         (Fuzz.pair
             (Fuzz.intAtLeast 0)
             (Fuzz.intAtLeast 0)
         )
-        (\( x, y ) -> x < 10 || abs (x - y) /= 1)
+        (\{ first = x, second = y } -> x < 10 || Math.abs (x - y) /= 1)
 
 
 {-| <https://github.com/jlink/shrinking-challenge/blob/836bafa664659a435ae186eed5b87e941228ae3d/challenges/binheap.md>
@@ -217,42 +218,40 @@ binHeap =
                     (Fuzz.maybe (heapFuzzer (depth - 1)))
                     (Fuzz.maybe (heapFuzzer (depth - 1)))
 
-        toList : Heap -> List Int
-        toList heap =
+        toArray : Heap -> Array Int
+        toArray heap =
             let
-                go : List Int -> List Heap -> List Int
+                go : Array Int -> Array Heap -> Array Int
                 go acc stack =
-                    case stack of
-                        [] ->
-                            List.reverse acc
+                    case Array.popFirst stack of
+                        Nothing ->
+                            Array.reverse acc
 
-                        (Heap n left right) :: hs ->
+                        Just { first = Heap n left right, rest = hs } ->
                             go
-                                (n :: acc)
-                                (List.filterMap identity [ left, right ]
-                                    ++ hs
-                                )
+                                ( Array.pushFirst n acc )
+                                ( Array.filterMap identity [ left, right ] ++ hs )
             in
             go [] [ heap ]
 
-        wrongToSortedList : Heap -> List Int
-        wrongToSortedList (Heap n left right) =
-            n
-                :: (mergeHeaps left right
-                        |> Maybe.map toList
+        wrongToSortedArray : Heap -> Array Int
+        wrongToSortedArray (Heap n left right) =
+            Array.pushFirst n
+                (mergeHeaps left right
+                        |> Maybe.map toArray
                         |> Maybe.withDefault []
-                   )
+                )
 
         mergeHeaps : Maybe Heap -> Maybe Heap -> Maybe Heap
         mergeHeaps left right =
-            case ( left, right ) of
-                ( Nothing, _ ) ->
+            case { l = left, r = right } of
+                { l = Nothing } ->
                     right
 
-                ( _, Nothing ) ->
+                { r = Nothing } ->
                     left
 
-                ( Just (Heap ln lleft lright), Just (Heap rn rleft rright) ) ->
+                { l = Just (Heap ln lleft lright), r = Just (Heap rn rleft rright) } ->
                     Just <|
                         if ln <= rn then
                             Heap ln (mergeHeaps lright right) lleft
@@ -274,12 +273,12 @@ binHeap =
         (\heap ->
             let
                 l1 =
-                    toList heap
+                    toArray heap
 
                 l2 =
-                    wrongToSortedList heap
+                    wrongToSortedArray heap
             in
-            (l2 == List.sort l2) && (List.sort l1 == l2)
+            (l2 == Array.sort l2) && (Array.sort l1 == l2)
         )
 
 
@@ -291,17 +290,6 @@ type Heap
 -}
 coupling : Test
 coupling =
-    let
-        getAt : Int -> List a -> Maybe a
-        getAt index list =
-            if index < 0 then
-                Nothing
-
-            else
-                list
-                    |> List.drop index
-                    |> List.head
-    in
     simplifiesTowardsMany
         "coupling"
         [ [ 1, 0 ]
@@ -322,27 +310,27 @@ coupling =
            - decrement all remaining integers
         -}
         ]
-        (Fuzz.list (Fuzz.intRange 0 10)
+        (Fuzz.array (Fuzz.intRange 0 10)
             |> Fuzz.filter
                 (\l ->
                     let
                         length =
-                            List.length l
+                            Array.length l
                     in
-                    List.all (\i -> i < length) l
+                    Array.all (\i -> i < length) l
                 )
         )
         (\list ->
             list
-                |> List.indexedMap
+                |> Array.indexedMap
                     (\i x ->
                         if i /= x then
-                            getAt x list /= Just i
+                            Array.get x list /= Just i
 
                         else
                             True
                     )
-                |> List.all identity
+                |> Array.all identity
         )
 
 
@@ -351,27 +339,27 @@ coupling =
 deletion : Test
 deletion =
     let
-        removeFirst : a -> List a -> List a
+        removeFirst : a -> Array a -> Array a
         removeFirst badX xs =
             go badX xs [] xs
 
-        go : a -> List a -> List a -> List a -> List a
+        go : a -> Array a -> Array a -> Array a -> Array a
         go badX next prev orig =
-            case next of
-                [] ->
+            case Array.popFirst next of
+                Nothing ->
                     orig
 
-                x :: rest ->
+                Just { first = x, rest } ->
                     if x == badX then
-                        List.reverse prev ++ rest
+                        Array.reverse prev ++ rest
 
                     else
-                        go badX rest (x :: prev) orig
+                        go badX rest (Array.pushFirst x prev) orig
     in
     simplifiesTowards
         "deletion"
-        ( [ 0, 0 ], 0 )
-        (Fuzz.listOfLengthBetween 1 100 Fuzz.int
+        { first = [ 0, 0 ], second = 0 }
+        (Fuzz.arrayOfLengthBetween 1 100 Fuzz.int
             |> Fuzz.andThen
                 (\list ->
                     Fuzz.pair
@@ -379,7 +367,7 @@ deletion =
                         (Fuzz.oneOfValues list)
                 )
         )
-        (\( list, el ) -> not (List.member el (removeFirst el list)))
+        (\{ first = list, second = el } -> not (Array.member el (removeFirst el list)))
 
 
 {-| <https://github.com/jlink/shrinking-challenge/blob/836bafa664659a435ae186eed5b87e941228ae3d/challenges/distinct.md>
@@ -395,16 +383,16 @@ distinct =
         , [ 0, 1, -1 ]
         , [ 0, -1, 1 ]
         ]
-        (Fuzz.list Fuzz.int)
-        (\list -> Set.size (Set.fromList list) < 3)
+        (Fuzz.array Fuzz.int)
+        (\list -> Set.size (Set.fromArray list) < 3)
 
 
 {-| <https://github.com/jlink/shrinking-challenge/blob/836bafa664659a435ae186eed5b87e941228ae3d/challenges/nestedlists.md>
 -}
-nestedLists : Test
-nestedLists =
+nestedArrays : Test
+nestedArrays =
     simplifiesTowards
-        "nestedLists"
+        "nestedArrays"
         [ [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] ]
-        (Fuzz.listOfLengthBetween 0 20 (Fuzz.listOfLengthBetween 0 20 Fuzz.int))
-        (\lists -> List.sum (List.map List.length lists) <= 10)
+        (Fuzz.arrayOfLengthBetween 0 20 (Fuzz.arrayOfLengthBetween 0 20 Fuzz.int))
+        (\lists -> Array.foldl (+) 0 (Array.map Array.length lists) <= 10)

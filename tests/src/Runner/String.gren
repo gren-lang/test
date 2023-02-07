@@ -35,7 +35,7 @@ toOutput : Summary -> SeededRunners -> Summary
 toOutput summary seededRunners =
     let
         render =
-            List.foldl toOutputHelp
+            Array.foldl toOutputHelp
     in
     case seededRunners of
         Plain runners ->
@@ -56,18 +56,18 @@ toOutputHelp runner summary =
     {-
        let
            _ =
-               Debug.log "==================" ()
+               Debug.log "==================" {}
        in
        let
            _ =
                Debug.log "TEST" runner.labels
        in
     -}
-    runner.run ()
-        |> List.foldl (fromExpectation runner.labels) summary
+    runner.run {}
+        |> Array.foldl (fromExpectation runner.labels) summary
 
 
-fromExpectation : List String -> Expectation -> Summary -> Summary
+fromExpectation : Array String -> Expectation -> Summary -> Summary
 fromExpectation labels expectation summary =
     let
         distributionReport : Maybe String
@@ -122,7 +122,7 @@ fromExpectation labels expectation summary =
             }
 
 
-outputLabels : List String -> String
+outputLabels : Array String -> String
 outputLabels labels =
     labels
         |> Test.Runner.formatLabels ((++) "↓ ") ((++) "✗ ")
@@ -148,7 +148,7 @@ indentLines : String -> String
 indentLines str =
     str
         |> String.split "\n"
-        |> List.map ((++) "    ")
+        |> Array.map ((++) "    ")
         |> String.join "\n"
 
 

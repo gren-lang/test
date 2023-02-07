@@ -29,7 +29,7 @@ format description reason =
         Invalid _ ->
             description
 
-        ListDiff expected actual ->
+        ArrayDiff expected actual ->
             listDiffToString 0
                 description
                 { expected = expected
@@ -42,7 +42,7 @@ format description reason =
         CollectionDiff { expected, actual, extra, missing } ->
             let
                 extraStr =
-                    if List.isEmpty extra then
+                    if Array.isEmpty extra then
                         ""
 
                     else
@@ -50,7 +50,7 @@ format description reason =
                             ++ (extra |> String.join ", " |> (\d -> "[ " ++ d ++ " ]"))
 
                 missingStr =
-                    if List.isEmpty missing then
+                    if Array.isEmpty missing then
                         ""
 
                     else
@@ -127,13 +127,13 @@ escapeUnicodeChars s =
             (32 <= v && v <= 125)
                 -- in ascii a-z A-Z with a few common special characters
                 && (-- except ` and ^ because they're combining marks, like in è and ê.
-                    List.member v [ 94, 96 ] == False
+                    Array.member v [ 94, 96 ] == False
                    )
     in
     s
-        |> String.toList
-        |> List.map Char.toCode
-        |> List.map
+        |> String.toArray
+        |> Array.map Char.toCode
+        |> Array.map
             (\c ->
                 if isAsciiChar c then
                     String.fromChar (Char.fromCode c)
@@ -147,15 +147,15 @@ escapeUnicodeChars s =
 listDiffToString :
     Int
     -> String
-    -> { expected : List String, actual : List String }
-    -> { originalExpected : List String, originalActual : List String }
+    -> { expected : Array String, actual : Array String }
+    -> { originalExpected : Array String, originalActual : Array String }
     -> String
 listDiffToString index description { expected, actual } originals =
-    case ( expected, actual ) of
-        ( [], [] ) ->
+    case { l = Array.popFirst expected, r = Array.popFirst actual } of
+        { l = [], r = [] } ->
             [ "Two lists were unequal previously, yet ended up equal later."
             , "This should never happen!"
-            , "Please report this bug to https://github.com/elm-explorations/test/issues - and include these lists: "
+            , "Please report this bug to https://github.com/gren-lang/test/issues - and include these lists: "
             , "\n"
             , Debug.toString originals.originalExpected
             , "\n"
@@ -163,17 +163,17 @@ listDiffToString index description { expected, actual } originals =
             ]
                 |> String.join ""
 
-        ( _ :: _, [] ) ->
+        { r = Just _, l = Nothing } ->
             verticalBar (description ++ " was shorter than")
                 (Debug.toString originals.originalExpected)
                 (Debug.toString originals.originalActual)
 
-        ( [], _ :: _ ) ->
+        { l = Nothing, r = Just _ } ->
             verticalBar (description ++ " was longer than")
                 (Debug.toString originals.originalExpected)
                 (Debug.toString originals.originalActual)
 
-        ( firstExpected :: restExpected, firstActual :: restActual ) ->
+        { l = Just { first = firstExpected, rest = restExpected }, r = Just { first = firstActual, rest = restActual } } ->
             if firstExpected == firstActual then
                 -- They're still the same so far; keep going.
                 listDiffToString (index + 1)
@@ -203,15 +203,15 @@ equalityToString : { operation : String, expected : String, actual : String } ->
 equalityToString { operation, expected, actual } =
     -- TODO make sure this looks reasonable for multiline strings
     let
-        ( ( valueBelow, diffArrowsBelow ), ( diffArrowsAbove, valueAbove ) ) =
+        { below = { value = valueBelow, arrows = diffArrowsBelow }, above = { arrows = diffArrowsAbove, value = valueAbove } } =
             formatEqualityDiffArrows expected actual
 
-        ( ( unicodeValueBelow, unicodeDiffArrowsBelow ), ( unicodeDiffArrowsAbove, unicodeValueAbove ) ) =
+        { below = { value = unicodeValueBelow, arrows = unicodeDiffArrowsBelow }, above = { arrows = unicodeDiffArrowsAbove, value = unicodeValueAbove } } =
             formatEqualityDiffArrows (escapeUnicodeChars expected) (escapeUnicodeChars actual)
 
         combine things =
             things
-                |> List.map (String.join "")
+                |> Array.map (String.join "")
                 |> String.join "\n"
     in
     verticalBar
@@ -248,48 +248,63 @@ equalityToString { operation, expected, actual } =
         )
 
 
-formatEqualityDiffArrows : String -> String -> ( ( List String, List String ), ( List String, List String ) )
+formatEqualityDiffArrows : String -> String -> { below : { value : Array String, arrows : Array String }, above : { value : Array String, arrows : Array String } }
 formatEqualityDiffArrows below above =
     if String.length below * String.length above > 300 * 300 then
         -- The Diff.diff diffing algorithm is roughly O(len(a) * len(b)), so we need some cutoff point where we just give up on diffing.
-        ( ( [ below ], [ " -- skipping diffing because input is too large" ] ), ( [ " -- skipping diffing because input is too large" ], [ above ] ) )
+        { below = { value = [ below ], arrows = [ " -- skipping diffing because input is too large" ] }
+        , above = { arrows = [ " -- skipping diffing because input is too large" ], value = [ above ] }
+        }
 
     else
         let
-            ( valueBelow, diffArrowsBelow ) =
-                Diff.diff (String.toList below) (String.toList above)
-                    |> List.map formatExpectedChange
-                    |> List.unzip
+            { firsts = valueBelow, seconds = diffArrowsBelow } =
+                Diff.diff (String.toArray below) (String.toArray above)
+                    |> Array.map formatExpectedChange
+                    |> collectPairs
 
-            ( diffArrowsAbove, valueAbove ) =
-                Diff.diff (String.toList above) (String.toList below)
-                    |> List.map formatActualChange
-                    |> List.unzip
+            { firsts = diffArrowsAbove, seconds = valueAbove } =
+                Diff.diff (String.toArray above) (String.toArray below)
+                    |> Array.map formatActualChange
+                    |> collectPairs
         in
-        ( ( valueBelow, diffArrowsBelow ), ( diffArrowsAbove, valueAbove ) )
+        { below = { value = valueBelow, arrows = diffArrowsBelow }
+        , above = { arrows = diffArrowsAbove, values = valueAbove }
+        }
+
+collectPairs : Array { first : a, second : b } -> { firsts : Array a, seconds : Array b }
+collectPairs arr =
+    Array.foldl 
+        (\{ first, second } acc -> 
+            { firsts = Array.pushLast first acc.firsts
+            , seconds = Array.pushLast second acc.seconds 
+            }
+        )
+        { firsts = [], seconds = [] } 
+        arr
 
 
-formatExpectedChange : Change Char -> ( String, String )
+formatExpectedChange : Change Char -> { first : String, second : String }
 formatExpectedChange diff =
     case diff of
         Added _ ->
-            ( "", "" )
+            { first = "", second = "" }
 
         Removed char ->
-            ( String.fromChar char, "▲" )
+            { first = String.fromChar char, second = "▲" }
 
         NoChange char ->
-            ( String.fromChar char, " " )
+            { first = String.fromChar char, second = " " }
 
 
-formatActualChange : Change Char -> ( String, String )
+formatActualChange : Change Char -> { first : String, second : String }
 formatActualChange diff =
     case diff of
         Added _ ->
-            ( "", "" )
+            { first = "", second = "" }
 
         Removed char ->
-            ( "▼", String.fromChar char )
+            { first = "▼", second = String.fromChar char }
 
         NoChange char ->
-            ( " ", String.fromChar char )
+            { first = " ", second = String.fromChar char }

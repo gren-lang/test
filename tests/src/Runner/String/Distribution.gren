@@ -7,7 +7,7 @@ import Test.Distribution exposing (DistributionReport(..))
 import Test.Runner
 
 
-report : List String -> DistributionReport -> Maybe String
+report : Array String -> DistributionReport -> Maybe String
 report testBreadcrumbs distributionReport =
     case distributionReport of
         NoDistribution ->
@@ -17,7 +17,7 @@ report testBreadcrumbs distributionReport =
             let
                 breadcrumbsPath =
                     testBreadcrumbs
-                        |> List.reverse
+                        |> Array.reverse
                         |> String.join " > "
             in
             Just <| breadcrumbsPath ++ "\n" ++ Test.Distribution.distributionReportTable r

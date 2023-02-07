@@ -47,7 +47,7 @@ fuzzTestAfterOneDistributed =
         \num -> Expect.equal num oneSeedAlreadyDistributed
 
 
-tests : List Test
+tests : Array Test
 tests =
     [ describe "Seed test"
         [ fuzzTest ]
@@ -112,7 +112,7 @@ tests =
     ]
 
 
-noAutoFail : List Test
+noAutoFail : Array Test
 noAutoFail =
     [ -- Test.skip does not affect seed distribution
       Test.concat
@@ -144,7 +144,7 @@ noAutoFail =
                     \num ->
                         Expect.equal num expectedNum
             , test "This should never get run" <|
-                \() ->
+                \_ ->
                     Expect.fail "Test.only is broken! This should not have been run."
             ]
         ]
@@ -170,7 +170,7 @@ noAutoFail =
                 \num ->
                     Expect.equal num expectedNum
         , test "this should never get run" <|
-            \() ->
+            \_ ->
                 Expect.fail "Test.only is broken! This should not have been run."
         ]
     , -- Test.only does not affect seed distribution

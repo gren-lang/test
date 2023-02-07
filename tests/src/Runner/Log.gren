@@ -29,7 +29,7 @@ import Test exposing (Test)
 
 {-| Run the test using the default `Test.Runner.String` options.
 -}
-run : Test -> ()
+run : Test -> {}
 run test =
     Runner.String.run test
         |> logOutput
@@ -37,7 +37,7 @@ run test =
 
 {-| Run the test using the provided options.
 -}
-runWithOptions : Int -> Random.Seed -> Test -> ()
+runWithOptions : Int -> Random.Seed -> Test -> {}
 runWithOptions runs seed test =
     Runner.String.runWithOptions runs seed test
         |> logOutput
@@ -66,7 +66,7 @@ summarize { output, passed, failed, autoFail } =
         ]
 
 
-logOutput : Summary -> ()
+logOutput : Summary -> {}
 logOutput summary =
     let
         output =
@@ -77,11 +77,11 @@ logOutput summary =
                 output
                     |> (\a -> Debug.log a 1)
                     |> (\_ -> Debug.todo "FAILED TEST RUN")
-                    |> (\_ -> ())
+                    |> (\_ -> {})
 
             else
                 output
                     |> (\a -> Debug.log a 0)
-                    |> (\_ -> ())
+                    |> (\_ -> {})
     in
-    ()
+    {}
