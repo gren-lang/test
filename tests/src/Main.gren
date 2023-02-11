@@ -21,8 +21,9 @@ main =
     let
         program =
             Program.define
-                { init = Program.startProgram { model = {}, command = {} }
-                , update = \_ _ -> { model = {}, command = {} }
+                { init = Program.startProgram { model = {}, command = Cmd.none }
+                , update = \_ _ -> { model = {}, command = Cmd.none }
+                , subscriptions = \_ -> Sub.none
                 }
     in
     runAllTests program
@@ -74,10 +75,10 @@ combineSummaries first second =
                 Nothing
 
             { l = Nothing, r = Just secondAutoFail } ->
-                secondAutoFail
+                Just secondAutoFail
 
             { l = Just firstAutoFail, r = Nothing } ->
-                firstAutoFail
+                Just firstAutoFail
 
             { l = Just firstAutoFail, r = Just secondAutoFail } ->
                 [ firstAutoFail, secondAutoFail ]
