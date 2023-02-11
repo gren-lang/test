@@ -1,3 +1,7 @@
+This is a port of elm-explorations/test
+It also contains a vendored port of elm-diff
+
+
 # elm test [![Travis build Status](http://travis-ci.org/elm-explorations/test.svg?branch=master)](https://travis-ci.org/elm-explorations/test)
 
 Write unit and fuzz tests for Elm code.
