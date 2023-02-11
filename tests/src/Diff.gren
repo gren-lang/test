@@ -1,0 +1,340 @@
+module Diff exposing (Change(..), diff, diffLines)
+
+{-| Compares two list and returns how they have changed.
+Each function internally uses Wu's [O(NP) algorithm](http://myerslab.mpi-cbg.de/wp-content/uploads/2014/06/np_diff.pdf).
+
+
+# Types
+
+@docs Change
+
+
+# Diffing
+
+@docs diff, diffLines
+
+-}
+
+
+{-| This describes how each line has changed and also contains its value.
+-}
+type Change a
+    = Added a
+    | Removed a
+    | NoChange a
+
+
+type StepResult
+    = Continue (Array (Array { x : Int, y : Int }))
+    | Found (Array { x : Int, y : Int })
+
+
+type BugReport
+    = CannotGetA Int
+    | CannotGetB Int
+    | UnexpectedPath { x : Int, y : Int } (Array { x : Int, y : Int })
+
+
+{-| Compares two text.
+
+Giving the following text
+
+    a =
+        """aaa
+    bbb
+    ddd"""
+
+    b =
+        """zzz
+    aaa
+    ccc
+    ddd"""
+
+results in
+
+    [ Added "zzz"
+    , NoChange "aaa"
+    , Removed "bbb"
+    , Added "ccc"
+    , NoChange "ddd"
+    ]
+
+.
+
+-}
+diffLines : String -> String -> Array (Change String)
+diffLines a b =
+    diff (String.lines a) (String.lines b)
+
+
+{-| Compares general lists.
+
+    diff [1, 3] [2, 3] == [Removed 1, Added 2, NoChange 3] -- True
+
+-}
+diff : Array a -> Array a -> Array (Change a)
+diff a b =
+    case testDiff a b of
+        Ok changes ->
+            changes
+
+        Err _ ->
+            []
+
+
+{-| Test the algolithm itself.
+If it returns Err, it should be a bug.
+-}
+testDiff : Array a -> Array a -> Result BugReport (Array (Change a))
+testDiff a b =
+    let
+        m =
+            Array.length a
+
+        n =
+            Array.length b
+
+        -- Gren's Array doesn't allow null element,
+        -- so we'll use shifted index to access source.
+        getA =
+            \x -> Array.get (x - 1) a
+
+        getB =
+            \y -> Array.get (y - 1) b
+
+        path =
+            -- Is there any case ond is needed?
+            -- ond getA getB m n
+            onp getA getB m n
+    in
+    makeChanges getA getB path
+
+
+makeChanges :
+    (Int -> Maybe a)
+    -> (Int -> Maybe a)
+    -> Array { x : Int, y : Int }
+    -> Result BugReport (Array (Change a))
+makeChanges getA getB path =
+    case Array.popFirst path of
+        Nothing ->
+            Ok []
+
+        Just { first = latest, rest = tail } ->
+            makeChangesHelp [] getA getB latest tail
+
+
+makeChangesHelp :
+    Array (Change a)
+    -> (Int -> Maybe a)
+    -> (Int -> Maybe a)
+    -> { x : Int, y : Int }
+    -> Array { x : Int, y : Int }
+    -> Result BugReport (Array (Change a))
+makeChangesHelp changes getA getB { x, y } path =
+    case Array.popFirst path of
+        Nothing ->
+            Ok changes
+
+        Just { first = { x = prevX, y = prevY }, rest = tail } ->
+            let
+                change =
+                    if x - 1 == prevX && y - 1 == prevY then
+                        case getA x of
+                            Just a ->
+                                Ok (NoChange a)
+
+                            Nothing ->
+                                Err (CannotGetA x)
+
+                    else if x == prevX then
+                        case getB y of
+                            Just b ->
+                                Ok (Added b)
+
+                            Nothing ->
+                                Err (CannotGetB y)
+
+                    else if y == prevY then
+                        case getA x of
+                            Just a ->
+                                Ok (Removed a)
+
+                            Nothing ->
+                                Err (CannotGetA x)
+
+                    else
+                        Err (UnexpectedPath { x = x, y = y } path)
+            in
+            case change of
+                Ok c ->
+                    makeChangesHelp (Array.pushFirst c changes) getA getB { x =  prevX, y = prevY } tail
+
+                Err e ->
+                    Err e
+
+
+-- Myers's O(ND) algorithm (http://www.xmailserver.org/diff2.pdf)
+
+
+ond : (Int -> Maybe a) -> (Int -> Maybe a) -> Int -> Int -> Array { x : Int, y : Int }
+ond getA getB m n =
+    let
+        v =
+            Array.initialize (m + n + 1) 0 (always [])
+    in
+    ondLoopDK (snake getA getB) m 0 0 v
+
+
+ondLoopDK :
+    (Int -> Int -> Array { x : Int, y : Int } -> { array : Array { x : Int, y : Int }, result : Bool })
+    -> Int
+    -> Int
+    -> Int
+    -> Array (Array { x : Int, y : Int })
+    -> Array { x : Int, y : Int }
+ondLoopDK snake_ offset d k v =
+    if k > d then
+        ondLoopDK snake_ offset (d + 1) (-d - 1) v
+
+    else
+        case step snake_ offset k v of
+            Found path ->
+                path
+
+            Continue v_ ->
+                ondLoopDK snake_ offset d (k + 2) v_
+
+
+
+-- Wu's O(NP) algorithm (http://myerslab.mpi-cbg.de/wp-content/uploads/2014/06/np_diff.pdf)
+
+
+onp : (Int -> Maybe a) -> (Int -> Maybe a) -> Int -> Int -> Array { x : Int, y : Int }
+onp getA getB m n =
+    let
+        v =
+            Array.initialize (m + n + 1) 0 (always [])
+
+        delta =
+            n - m
+    in
+    onpLoopP (snake getA getB) delta m 0 v
+
+
+onpLoopP :
+    (Int -> Int -> Array { x : Int, y : Int } -> { array : Array { x : Int, y : Int }, result : Bool })
+    -> Int
+    -> Int
+    -> Int
+    -> Array (Array { x : Int, y : Int })
+    -> Array { x : Int, y : Int }
+onpLoopP snake_ delta offset p v =
+    let
+        ks =
+            if delta > 0 then
+                Array.reverse (Array.range (delta + 1) (delta + p))
+                    ++ Array.range -p delta
+
+            else
+                Array.reverse (Array.range (delta + 1) p)
+                    ++ Array.range (-p + delta) delta
+    in
+    case onpLoopK snake_ offset ks v of
+        Found path ->
+            path
+
+        Continue v_ ->
+            onpLoopP snake_ delta offset (p + 1) v_
+
+
+onpLoopK :
+    (Int -> Int -> Array { x : Int, y : Int } -> { array : Array { x : Int, y : Int }, result : Bool })
+    -> Int
+    -> Array Int
+    -> Array (Array { x : Int, y : Int })
+    -> StepResult
+onpLoopK snake_ offset ks v =
+    case Array.popFirst ks of
+        Nothing ->
+            Continue v
+
+        Just { first = k, rest = ks_ } ->
+            case step snake_ offset k v of
+                Found path ->
+                    Found path
+
+                Continue v_ ->
+                    onpLoopK snake_ offset ks_ v_
+
+
+step :
+    (Int -> Int -> Array { x : Int, y : Int } -> { array : Array { x : Int, y : Int }, result : Bool })
+    -> Int
+    -> Int
+    -> Array (Array { x : Int, y : Int })
+    -> StepResult
+step snake_ offset k v =
+    let
+        fromLeft =
+            Maybe.withDefault [] (Array.get (k - 1 + offset) v)
+
+        fromTop =
+            Maybe.withDefault [] (Array.get (k + 1 + offset) v)
+
+        { path, point = { x, y } } =
+            case { l = Array.popFirst fromLeft, t = Array.popFirst fromTop } of
+                { l = Nothing, t = Nothing } ->
+                    { path = [], point = { x = 0, y = 0 } }
+
+                { l = Nothing, t = Just { first = { x = topX, y = topY } } } ->
+                    { path = fromTop, point = { x = topX + 1, y = topY } }
+
+                { l = Just { first = { x = leftX, y = leftY } }, t = Nothing } ->
+                    { path = fromLeft, point = { x = leftX, y = leftY + 1 } }
+
+                { l = Just { first = { x = leftX, y = leftY } }, t = Just { first = { x = topX, y = topY } } } ->
+                    -- this implies "remove" comes always earlier than "add"
+                    if leftY + 1 >= topY then
+                        { path = fromLeft, point = { x = leftX, y = leftY + 1 } }
+
+                    else
+                        { path = fromTop, point = { x = topX + 1, y = topY } }
+
+        { array = newPath, result = goal } =
+            snake_ (x + 1) (y + 1) (Array.pushFirst { x = x, y = y } path)
+    in
+    if goal then
+        Found newPath
+
+    else
+        Continue (Array.set (k + offset) newPath v)
+
+
+snake :
+    (Int -> Maybe a)
+    -> (Int -> Maybe a)
+    -> Int
+    -> Int
+    -> Array { x : Int, y : Int }
+    -> { array : Array { x : Int, y : Int }, result : Bool }
+snake getA getB nextX nextY path =
+    case { l = getA nextX, r = getB nextY } of
+        { l = Just a, r = Just b } ->
+            if a == b then
+                snake
+                    getA
+                    getB
+                    (nextX + 1)
+                    (nextY + 1)
+                    (Array.pushFirst { x = nextX, y = nextY } path)
+
+            else
+                { array = path, result = False }
+
+        -- reached bottom-right corner
+        { l = Nothing, r = Nothing } ->
+            { array = path, result = True }
+
+        _ ->
+            { array = path, result = False }
