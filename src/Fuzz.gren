@@ -47,7 +47,7 @@ can usually find the simplest input that reproduces a bug.
 
 @docs pair, triple
 @docs array, arrayOfLength, arrayOfLengthBetween, shuffledArray
-@docs array, maybe, result
+@docs maybe, result
 
 
 ## Other fuzzers
