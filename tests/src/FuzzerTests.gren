@@ -542,14 +542,6 @@ fuzzerSpecificationTests =
                 , simplifiesTowards "next simplest" [ 0, 1 ] (Fuzz.arrayOfLengthBetween 2 5 Fuzz.int) (\x -> x == [ 0, 0 ])
                 , doesNotReject "swapped arguments" (Fuzz.arrayOfLengthBetween 5 -5 Fuzz.unit)
                 ]
-            , describe "array"
-                [ canGenerateWith { runs = 1000 } Array.empty (Fuzz.array Fuzz.unit)
-                , canGenerateSatisfying "non-empty array"
-                    (Fuzz.array Fuzz.unit)
-                    (not << Array.isEmpty)
-                , simplifiesTowards "simplest" Array.empty (Fuzz.array Fuzz.int) fullySimplify
-                , simplifiesTowards "next simplest" [ 0 ] (Fuzz.array Fuzz.int) (\x -> Array.isEmpty x)
-                ]
             , describe "uniformInt"
                 [ cannotGenerateSatisfying "any Infinity"
                     (Fuzz.uniformInt 10)

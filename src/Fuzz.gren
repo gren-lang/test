@@ -488,8 +488,8 @@ percentage =
        mantissa calculations so we don't bother generating those.
     -}
     intFrequency
-        [ { weight =1, fuzzer = constant 0 }
-        , { weight =1, fuzzer = constant Fuzz.Float.maxFractionalFloat } -- just barely below 1
+        [ { weight = 1, fuzzer = constant 0 }
+        , { weight = 1, fuzzer = constant Fuzz.Float.maxFractionalFloat } -- just barely below 1
         , { weight = 4
           , fuzzer = pair (uniformInt 0x000FFFFF) int32
                 |> map (\{ first, second } -> Fuzz.Float.fractionalFloat { hi = first, lo = second })
@@ -1197,7 +1197,7 @@ intFrequency fuzzers =
                     |> andThen
                         (\i ->
                             fuzzers
-                                |> Array.get (i + 1)
+                                |> Array.get i
                                 |> Maybe.map .fuzzer
                                 |> Maybe.withDefault (invalid "elm-test bug: intFrequency index out of range")
                         )
