@@ -85,17 +85,20 @@ formatTable { runsElapsed, distributionCount } =
 
             else
                 """
-
-Combinations (included in the above base counts):
-{COMBINATIONS}"""
+                Combinations (included in the above base counts):
+                {COMBINATIONS}
+                """
                     |> String.replace "{COMBINATIONS}" (String.join "\n" (Array.map .renderedRow combinations))
+                    |> (\s -> "\n" ++ s)
 
         table =
             baseString ++ combinationsString_
     in
-    """Distribution report:
-====================
-{CATEGORIES}"""
+        """
+        Distribution report:
+        ====================
+        {CATEGORIES}
+        """
         |> String.replace "{CATEGORIES}" table
 
 
