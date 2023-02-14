@@ -302,15 +302,18 @@ set index value run =
         }
 
 
-sortKey : RandomRun -> Array Int
-sortKey run =
-    toArray run
-
-
 compare : RandomRun -> RandomRun -> Order
 compare a b =
-    Basics.compare (sortKey a) (sortKey b)
+    case Basics.compare (.length a) (.length b) of
+        LT ->
+            LT
 
+        EQ ->
+            Basics.compare (toArray a) (toArray b)
+
+        GT ->
+            GT
+    
 
 toArray : RandomRun -> Array Int
 toArray run =
