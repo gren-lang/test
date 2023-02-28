@@ -4,7 +4,7 @@ Write unit and fuzz tests for Gren code.
 
 This package allows you to define tests, but in order to run them you will need a [test runner](https://github.com/gren-lang/test-runner-node).
 
-This is a port of [elm-explorations/test](https://github.com/elm-explorations/test), it also contains a vendored port of [jinjor/elm-diff](https://github.com/jinjor/elm-diff).
+This is a port of [elm-explorations/test](https://github.com/elm-explorations/test).
 
 ## Quick Start
 
