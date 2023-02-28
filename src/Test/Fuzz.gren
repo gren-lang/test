@@ -29,14 +29,14 @@ fuzzTest distribution fuzzer untrimmedDesc getExpectation =
         blankDescriptionFailure
 
     else
-        ElmTestVariant__Labeled desc <| validatedFuzzTest fuzzer getExpectation distribution
+        GrenTestVariant__Labeled desc <| validatedFuzzTest fuzzer getExpectation distribution
 
 
 {-| Knowing that the fuzz test isn't obviously invalid, run the test and package up the results.
 -}
 validatedFuzzTest : Fuzzer a -> (a -> Expectation) -> Distribution a -> Test
 validatedFuzzTest fuzzer getExpectation distribution =
-    ElmTestVariant__FuzzTest
+    GrenTestVariant__FuzzTest
         (\seed runs ->
             let
                 runResult : RunResult

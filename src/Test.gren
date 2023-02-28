@@ -68,7 +68,7 @@ concat tests =
                     }
 
             Ok _ ->
-                Internal.ElmTestVariant__Batch tests
+                Internal.GrenTestVariant__Batch tests
 
 
 {-| Apply a description to a list of tests.
@@ -120,7 +120,7 @@ describe untrimmedDesc tests =
                     dupDescription duped =
                         "Contains multiple tests named '" ++ duped ++ "'. Let's rename them so we know which is which."
                 in
-                Internal.ElmTestVariant__Labeled desc <|
+                Internal.GrenTestVariant__Labeled desc <|
                     Internal.failNow
                         { description = String.join "\n" (Array.map dupDescription <| Set.toArray dups)
                         , reason = Invalid DuplicatedName
@@ -128,14 +128,14 @@ describe untrimmedDesc tests =
 
             Ok childrenNames ->
                 if Set.member desc childrenNames then
-                    Internal.ElmTestVariant__Labeled desc <|
+                    Internal.GrenTestVariant__Labeled desc <|
                         Internal.failNow
                             { description = "The test '" ++ desc ++ "' contains a child test of the same name. Let's rename them so we know which is which."
                             , reason = Invalid DuplicatedName
                             }
 
                 else
-                    Internal.ElmTestVariant__Labeled desc (Internal.ElmTestVariant__Batch tests)
+                    Internal.GrenTestVariant__Labeled desc (Internal.GrenTestVariant__Batch tests)
 
 
 {-| Return a [`Test`](#Test) that evaluates a single
@@ -161,7 +161,7 @@ test untrimmedDesc thunk =
         Internal.blankDescriptionFailure
 
     else
-        Internal.ElmTestVariant__Labeled desc (Internal.ElmTestVariant__UnitTest (\{} -> [ thunk {} ]))
+        Internal.GrenTestVariant__Labeled desc (Internal.GrenTestVariant__UnitTest (\{} -> [ thunk {} ]))
 
 
 {-| Returns a [`Test`](#Test) that is "TODO" (not yet implemented). These tests
@@ -230,7 +230,7 @@ an `only` inside a `skip`, it will also get skipped.
 -}
 only : Test -> Test
 only =
-    Internal.ElmTestVariant__Only
+    Internal.GrenTestVariant__Only
 
 
 {-| Returns a [`Test`](#Test) that gets skipped.
@@ -266,7 +266,7 @@ an `only` inside a `skip`, it will also get skipped.
 -}
 skip : Test -> Test
 skip =
-    Internal.ElmTestVariant__Skipped
+    Internal.GrenTestVariant__Skipped
 
 
 {-| Options [`fuzzWith`](#fuzzWith) accepts.
@@ -358,29 +358,29 @@ fuzzWith options fuzzer desc getTest =
 fuzzWithHelp : FuzzOptions a -> Test -> Test
 fuzzWithHelp options aTest =
     case aTest of
-        Internal.ElmTestVariant__UnitTest _ ->
+        Internal.GrenTestVariant__UnitTest _ ->
             aTest
 
-        Internal.ElmTestVariant__FuzzTest run ->
-            Internal.ElmTestVariant__FuzzTest (\seed _ -> run seed options.runs)
+        Internal.GrenTestVariant__FuzzTest run ->
+            Internal.GrenTestVariant__FuzzTest (\seed _ -> run seed options.runs)
 
-        Internal.ElmTestVariant__Labeled label subTest ->
-            Internal.ElmTestVariant__Labeled label (fuzzWithHelp options subTest)
+        Internal.GrenTestVariant__Labeled label subTest ->
+            Internal.GrenTestVariant__Labeled label (fuzzWithHelp options subTest)
 
-        Internal.ElmTestVariant__Skipped subTest ->
+        Internal.GrenTestVariant__Skipped subTest ->
             -- It's important to treat skipped tests exactly the same as normal,
             -- until after seed distribution has completed.
             fuzzWithHelp options subTest
-                |> Internal.ElmTestVariant__Only
+                |> Internal.GrenTestVariant__Only
 
-        Internal.ElmTestVariant__Only subTest ->
+        Internal.GrenTestVariant__Only subTest ->
             fuzzWithHelp options subTest
-                |> Internal.ElmTestVariant__Only
+                |> Internal.GrenTestVariant__Only
 
-        Internal.ElmTestVariant__Batch tests ->
+        Internal.GrenTestVariant__Batch tests ->
             tests
                 |> Array.map (fuzzWithHelp options)
-                |> Internal.ElmTestVariant__Batch
+                |> Internal.GrenTestVariant__Batch
 
 
 {-| Take a function that produces a test, and calls it several (usually 100) times, using a randomly-generated input

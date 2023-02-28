@@ -63,7 +63,7 @@ Does some rearranging of which bits mean what (compared to IEEE-754 arrangement
 of sign, exponent and mantissa) so that lexicographically smaller `(hi, lo)`
 pairs of 32bit integers give simpler values.
 
-Elm doesn't have 64bit integers, so particularly for any mantissa operations we
+Gren doesn't have 64bit integers, so particularly for any mantissa operations we
 will have to work on a pair of 32bit integers.
 
 ---

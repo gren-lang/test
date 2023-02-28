@@ -6,7 +6,7 @@ import Test.Expectation exposing (Expectation)
 import Test.Runner.Failure exposing (InvalidReason(..), Reason(..))
 
 
-{-| All variants of this type has the `ElmTestVariant__` prefix so that
+{-| All variants of this type has the `GrenTestVariant__` prefix so that
 node-test-runner can recognize them in the compiled JavaScript. This lets us
 add more variants here without having to update the runner.
 
@@ -14,19 +14,19 @@ For more information, see <https://github.com/elm-explorations/test/pull/153>
 
 -}
 type Test
-    = ElmTestVariant__UnitTest ({} -> Array Expectation)
-    | ElmTestVariant__FuzzTest (Random.Seed -> Int -> Array Expectation)
-    | ElmTestVariant__Labeled String Test
-    | ElmTestVariant__Skipped Test
-    | ElmTestVariant__Only Test
-    | ElmTestVariant__Batch (Array Test)
+    = GrenTestVariant__UnitTest ({} -> Array Expectation)
+    | GrenTestVariant__FuzzTest (Random.Seed -> Int -> Array Expectation)
+    | GrenTestVariant__Labeled String Test
+    | GrenTestVariant__Skipped Test
+    | GrenTestVariant__Only Test
+    | GrenTestVariant__Batch (Array Test)
 
 
 {-| Create a test that always fails for the given reason and description.
 -}
 failNow : { description : String, reason : Reason } -> Test
 failNow record =
-    ElmTestVariant__UnitTest
+    GrenTestVariant__UnitTest
         (\{} -> [ Test.Expectation.fail record ])
 
 
@@ -44,22 +44,22 @@ duplicatedName tests =
         names : Test -> Array String
         names test =
             case test of
-                ElmTestVariant__Labeled str _ ->
+                GrenTestVariant__Labeled str _ ->
                     [ str ]
 
-                ElmTestVariant__Batch subtests ->
+                GrenTestVariant__Batch subtests ->
                     Array.flatMap names subtests
 
-                ElmTestVariant__UnitTest _ ->
+                GrenTestVariant__UnitTest _ ->
                     []
 
-                ElmTestVariant__FuzzTest _ ->
+                GrenTestVariant__FuzzTest _ ->
                     []
 
-                ElmTestVariant__Skipped subTest ->
+                GrenTestVariant__Skipped subTest ->
                     names subTest
 
-                ElmTestVariant__Only subTest ->
+                GrenTestVariant__Only subTest ->
                     names subTest
 
         accumDuplicates : String -> { dups : Set String, uniques : Set String } -> { dups : Set String, uniques : Set String }
