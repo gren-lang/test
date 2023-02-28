@@ -1,50 +1,28 @@
-module Main exposing (main)
+module SeedTestsMain exposing (main)
 
-{-| HOW TO RUN THESE TESTS
-
-$ npm test
-
-Note that this always uses an initial seed of 902101337, since it can't do effects.
-
--}
-
-import Platform
-import Node.Program as Program exposing (Program)
-import Runner.Log
-import Runner.String exposing (Summary)
 import SeedTests
-import Tests
+import Expect
+import Test exposing (test)
+import Test.Runner.String exposing (Summary)
+import Test.Runner.Node exposing (Program, run)
 
 
-main : Program {} {}
+main : Program
 main =
     let
-        program =
-            Program.define
-                { init = Program.startProgram { model = {}, command = Cmd.none }
-                , update = \_ _ -> { model = {}, command = Cmd.none }
-                , subscriptions = \_ -> Sub.none
-                }
-    in
-    runAllTests program
-
-
-runAllTests : a -> a
-runAllTests a =
-    let
         runSeedTest =
-            Runner.String.runWithOptions 1 SeedTests.fixedSeed
+            Test.Runner.String.runWithOptions 1 SeedTests.fixedSeed
 
-        _ =
-            [ [ Runner.String.run Tests.all ]
-            , Array.map runSeedTest SeedTests.tests
+        testSummary =
+            [ Array.map runSeedTest SeedTests.tests
             , Array.map (runSeedTest >> removeAutoFail) SeedTests.noAutoFail
             ]
                 |> Array.flatten
                 |> Array.foldl combineSummaries emptySummary
-                |> Runner.Log.logOutput
     in
-    a
+    run <|
+        test "There should be no failures" <| \_ ->
+            Expect.equal 0 testSummary.failed
 
 
 emptySummary : Summary
