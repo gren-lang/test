@@ -1762,8 +1762,15 @@ labelExamples n labels fuzzer =
                 combinations : Array { key : Array String, value : a }
                 combinations =
                     foundExamples
-                        |> Dict.filter (\k _ -> Array.length k > 1)
-                        |> Dict.toArray
+                        |> Dict.foldl 
+                            (\k v arr ->
+                                if Array.length k > 1 then
+                                    Array.pushLast { key = k, value = v } arr
+
+                                else
+                                    arr
+                            )
+                            []
             in
             Array.filterMap
                 (\{ label } ->

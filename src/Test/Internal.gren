@@ -65,10 +65,10 @@ duplicatedName tests =
         accumDuplicates : String -> { dups : Set String, uniques : Set String } -> { dups : Set String, uniques : Set String }
         accumDuplicates newName { dups, uniques } =
             if Set.member newName uniques then
-                { dups = Set.insert newName dups, uniques = uniques }
+                { dups = Set.set newName dups, uniques = uniques }
 
             else
-                { dups = dups, uniques = Set.insert newName uniques }
+                { dups = dups, uniques = Set.set newName uniques }
 
         { dups = dupsAccum, uniques = uniquesAccum } =
             Array.flatMap names tests

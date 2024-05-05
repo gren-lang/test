@@ -511,7 +511,7 @@ or added to each dict:
 -}
 equalDicts : Dict comparable a -> Dict comparable a -> Expectation
 equalDicts expected actual =
-    if Dict.toArray expected == Dict.toArray actual then
+    if expected == actual then
         pass
 
     else

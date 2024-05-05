@@ -98,8 +98,7 @@ initLoopState initialSeed distribution =
                 |> Maybe.map
                     (\labels ->
                         labels
-                            |> Array.map (\{ label } -> { key = [ label ], value = 0 })
-                            |> Dict.fromArray
+                            |> Array.foldl (\{ label } dict -> Dict.set [ label ] 0 dict) Dict.empty
                     )
     in
     { runsElapsed = 0
@@ -251,20 +250,20 @@ allSufficientlyCovered c state normalizedDistributionCount =
                 let
                     expectedDistributions_ : Dict String ExpectedDistribution
                     expectedDistributions_ =
-                        Dict.fromArray <| Array.map (\{ label, expectedDistribution } -> { key = label, value = expectedDistribution }) expectedDistributions
+                        Array.foldl (\{ label, expectedDistribution } dict -> Dict.set label expectedDistribution dict) Dict.empty expectedDistributions
                 in
                 distributionCount
                     -- Needs normalized distribution count:
-                    |> Dict.toArray
-                    |> Array.filterMap
-                        (\{ key = labels, value = count } ->
+                    |> Dict.foldl
+                        (\labels count array ->
                             case labels of
                                 [ onlyLabel ] ->
-                                    Just { label = onlyLabel, count = count }
+                                    Array.pushLast { label = onlyLabel, count = count } array
 
                                 _ ->
-                                    Nothing
+                                    array
                         )
+                        []
                     |> Maybe.traverse
                         (\{ label, count } ->
                             Dict.get label expectedDistributions_
@@ -343,22 +342,24 @@ findInsufficientlyCoveredLabel c state normalizedDistributionCount =
                 let
                     expectedDistributions_ : Dict String ExpectedDistribution
                     expectedDistributions_ =
-                        Dict.fromArray <| Array.map (\{ label, expectedDistribution } -> { key = label, value = expectedDistribution }) expectedDistributions
+                        Array.foldl (\{ label, expectedDistribution } dict -> Dict.set label expectedDistribution dict) Dict.empty expectedDistributions
                 in
                 -- TODO loop ExpectedDistributions instead of looping the label combinations?
                 distributionCount
                     -- Needs normalized distribution count:
-                    |> Dict.toArray
-                    |> Array.filterMap
-                        (\{ key = labels, value = count } ->
+                    |> Dict.foldl
+                        (\labels count array ->
                             case labels of
                                 [ onlyLabel ] ->
                                     Dict.get onlyLabel expectedDistributions_
                                         |> Maybe.map (\expectedDistribution -> { label = onlyLabel, count = count, expectedDistribution = expectedDistribution })
+                                        |> Maybe.map (\item -> Array.pushLast item array)
+                                        |> Maybe.withDefault array
 
                                 _ ->
-                                    Nothing
+                                    array
                         )
+                        []
                     |> Array.findFirst
                         (\{ count, expectedDistribution } ->
                             case expectedDistribution of

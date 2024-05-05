@@ -26,7 +26,7 @@ formatTable { runsElapsed, distributionCount } =
 
         distributionArray : Array { key : Array String, value : Int }
         distributionArray =
-            Dict.toArray distributionCount
+            Dict.foldl (\key value array -> Array.pushLast { key = key, value = value } array) [] distributionCount
 
         distribution : Array { labels : Array String, count : Int, percentage : Float }
         distribution =
