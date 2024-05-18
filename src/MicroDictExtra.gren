@@ -1,13 +1,6 @@
-module MicroDictExtra exposing (any, increment)
+module MicroDictExtra exposing (increment)
 
 import Dict exposing (Dict)
-
-
-any : (k -> v -> Bool) -> Dict k v -> Bool
-any pred dict =
-    dict
-        |> Dict.foldl (\k v array -> Array.pushLast { key = k, value = v } array) []
-        |> Array.any (\{ key, value } -> pred key value)
 
 
 increment : comparable -> Dict comparable Int -> Dict comparable Int
