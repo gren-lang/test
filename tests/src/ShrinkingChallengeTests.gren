@@ -50,7 +50,7 @@ largeUnionArray =
         "large union list"
         [ [ 0, 1, -1, 2, -2 ] ]
         (Fuzz.array (Fuzz.array Fuzz.int))
-        (\lists -> Set.size (Set.fromArray (Array.flatten lists)) <= 4)
+        (\lists -> Set.count (Set.fromArray (Array.flatten lists)) <= 4)
 
 
 {-| <https://github.com/jlink/shrinking-challenge/blob/836bafa664659a435ae186eed5b87e941228ae3d/challenges/calculator.md>
@@ -384,7 +384,7 @@ distinct =
         , [ 0, -1, 1 ]
         ]
         (Fuzz.array Fuzz.int)
-        (\list -> Set.size (Set.fromArray list) < 3)
+        (\list -> Set.count (Set.fromArray list) < 3)
 
 
 {-| <https://github.com/jlink/shrinking-challenge/blob/836bafa664659a435ae186eed5b87e941228ae3d/challenges/nestedlists.md>

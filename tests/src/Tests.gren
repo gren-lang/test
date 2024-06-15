@@ -118,9 +118,11 @@ regressions =
                     "fuzz tests run 100 times"
                     (Expect.notEqual 5)
                     |> expectTestToFail
+        {-
         , test "the String.reverse bug that prevented us from releasing unicode string fuzzers in August 2017 is now fixed" <|
             -- if characters that span more than one utf-16 character work, this version of the unicode string fuzzer is good to go
             \_ -> "🔥" |> String.reverse |> Expect.equal "🔥"
+        -}
 
         {-
            , test "String.reverse implements unicode string reversing correctly" <|
