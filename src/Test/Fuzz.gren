@@ -425,11 +425,13 @@ distributionInsufficientFailure failure =
     , expectation =
         Test.Expectation.fail
             { description =
-                """Distribution of label "{LABEL}" was insufficient:
-  expected:  {EXPECTED_PERCENTAGE}
-  got:       {ACTUAL_PERCENTAGE}.
+                """
+                Distribution of label "{LABEL}" was insufficient:
+                  expected:  {EXPECTED_PERCENTAGE}
+                  got:       {ACTUAL_PERCENTAGE}.
 
-(Generated {RUNS} values.)"""
+                (Generated {RUNS} values.)
+                """
                     |> String.replace "{LABEL}" failure.label
                     |> String.replace "{EXPECTED_PERCENTAGE}" (formatExpectedDistribution failure.expectedDistribution)
                     |> String.replace "{ACTUAL_PERCENTAGE}" (Test.Distribution.Internal.formatPct failure.actualPercentage)
