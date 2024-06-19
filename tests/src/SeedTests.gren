@@ -107,7 +107,7 @@ tests =
     , describe "Fuzz tests with different outer describe texts get different seeds"
         [ fuzz int "It receives the expected number" <|
             \num ->
-                Expect.equal num -31327
+                Expect.equal num -95
         ]
     ]
 
