@@ -29,7 +29,7 @@ fuzzTest distribution fuzzer untrimmedDesc getExpectation =
         blankDescriptionFailure
 
     else
-        GrenTestVariant__Labeled desc <| validatedFuzzTest fuzzer getExpectation distribution
+        GrenTestVariant__Labeled { label = desc, test = validatedFuzzTest fuzzer getExpectation distribution }
 
 
 {-| Knowing that the fuzz test isn't obviously invalid, run the test and package up the results.
@@ -50,7 +50,7 @@ validatedFuzzTest fuzzer getExpectation distribution =
                         }
                         (initLoopState seed distribution)
             in
-            case runResult.failure of
+            when runResult.failure is
                 Nothing ->
                     [ Pass { distributionReport = runResult.distributionReport } ]
 
@@ -138,12 +138,12 @@ The loop algorithm is roughly:
 -}
 fuzzLoop : LoopConstants a -> LoopState -> RunResult
 fuzzLoop c state =
-    case state.failure of
+    when state.failure is
         Just failure ->
             -- If the test fails, it still is useful to report the distribution even if we didn't do the statistical check for ExpectDistribution.
             -- For this reason we try to create DistributionToReport even in case of ExpectDistribution.
             { distributionReport =
-                case state.distributionCount of
+                when state.distributionCount is
                     Nothing ->
                         NoDistribution
 
@@ -165,14 +165,14 @@ fuzzLoop c state =
                 fuzzLoop c newState
 
             else
-                case c.distribution of
+                when c.distribution is
                     NoDistributionNeeded ->
                         { distributionReport = NoDistribution
                         , failure = Nothing
                         }
 
                     ReportDistribution _ ->
-                        case state.distributionCount of
+                        when state.distributionCount is
                             Nothing ->
                                 -- Shouldn't happen, we're in the ReportDistribution case. This indicates a bug in `initLoopState`.
                                 distributionBugRunResult
@@ -198,9 +198,9 @@ fuzzLoop c state =
                                Unfortunately I don't see a good way of using the statistical test for this,
                                so we'll just hope the amount of tests we've done so far suffices.
                             -}
-                            case findBadZeroRelatedCase c state normalizedDistributionCount of
+                            when findBadZeroRelatedCase c state normalizedDistributionCount is
                                 Nothing ->
-                                    case normalizedDistributionCount of
+                                    when normalizedDistributionCount is
                                         Nothing ->
                                             -- Shouldn't happen, we're in the ReportDistribution case. This indicates a bug in `initLoopState`.
                                             distributionBugRunResult
@@ -218,7 +218,7 @@ fuzzLoop c state =
                                     distributionFailRunResult normalizedDistributionCount failedLabel
 
                         else
-                            case findInsufficientlyCoveredLabel c state normalizedDistributionCount of
+                            when findInsufficientlyCoveredLabel c state normalizedDistributionCount is
                                 Nothing ->
                                     let
                                         newState : LoopState
@@ -256,7 +256,7 @@ allSufficientlyCovered c state normalizedDistributionCount =
                     -- Needs normalized distribution count:
                     |> Dict.foldl
                         (\labels count array ->
-                            case labels of
+                            when labels is
                                 [ onlyLabel ] ->
                                     Array.pushLast { label = onlyLabel, count = count } array
 
@@ -272,7 +272,7 @@ allSufficientlyCovered c state normalizedDistributionCount =
                     |> Maybe.map
                         (Array.all
                             (\{ count, expectedDistribution } ->
-                                case expectedDistribution of
+                                when expectedDistribution is
                                     -- Zero and MoreThanZero will get checked in the Success case
                                     Zero ->
                                         True
@@ -299,7 +299,7 @@ findBadZeroRelatedCase c state normalizedDistributionCount =
                 expectedDistributions
                     |> Array.findFirst
                         (\{ label, expectedDistribution } ->
-                            case expectedDistribution of
+                            when expectedDistribution is
                                 Zero ->
                                     -- TODO short-circuit Zero sooner: as soon as we increment its counter, during runNTimes.
                                     Dict.get [ label ] distributionCount
@@ -316,6 +316,7 @@ findBadZeroRelatedCase c state normalizedDistributionCount =
                                 AtLeast _ ->
                                     False
                         )
+                    |> Maybe.map .value
                     |> Maybe.andThen
                         (\{ label, expectedDistribution } ->
                             Dict.get [ label ] distributionCount
@@ -349,7 +350,7 @@ findInsufficientlyCoveredLabel c state normalizedDistributionCount =
                     -- Needs normalized distribution count:
                     |> Dict.foldl
                         (\labels count array ->
-                            case labels of
+                            when labels is
                                 [ onlyLabel ] ->
                                     Dict.get onlyLabel expectedDistributions_
                                         |> Maybe.map (\expectedDistribution -> { label = onlyLabel, count = count, expectedDistribution = expectedDistribution })
@@ -362,7 +363,7 @@ findInsufficientlyCoveredLabel c state normalizedDistributionCount =
                         []
                     |> Array.findFirst
                         (\{ count, expectedDistribution } ->
-                            case expectedDistribution of
+                            when expectedDistribution is
                                 Zero ->
                                     False
 
@@ -372,6 +373,7 @@ findInsufficientlyCoveredLabel c state normalizedDistributionCount =
                                 AtLeast n ->
                                     Test.Distribution.Internal.insufficientlyCovered state.runsElapsed count (n / 100)
                         )
+                    |> Maybe.map .value
                     |> Maybe.map
                         (\{ label, count, expectedDistribution } ->
                             { label = label
@@ -386,7 +388,7 @@ findInsufficientlyCoveredLabel c state normalizedDistributionCount =
 
 distributionFailRunResult : Maybe (Dict (Array String) Int) -> DistributionFailure -> RunResult
 distributionFailRunResult normalizedDistributionCount failedLabel =
-    case normalizedDistributionCount of
+    when normalizedDistributionCount is
         Nothing ->
             -- Shouldn't happen, we're in the ExpectDistribution case. This indicates a bug in `initLoopState`.
             distributionBugRunResult
@@ -472,7 +474,7 @@ runOnce c state =
 
         nextSeed : Random.Seed
         nextSeed =
-            case maybeNextSeed of
+            when maybeNextSeed is
                 Just seed ->
                     seed
 
@@ -480,7 +482,7 @@ runOnce c state =
                     stepSeed state.currentSeed
 
         { failure = maybeFailure, distributionCount = newDistributionCounter } =
-            case genResult of
+            when genResult is
                 Rejected { reason } ->
                     { failure = Just
                         { given = Nothing
@@ -513,7 +515,7 @@ runOnce c state =
                                         foundLabels : Array String
                                         foundLabels =
                                             labels
-                                                |> Array.filterMap
+                                                |> Array.mapAndKeepJust
                                                     (\{ label, fn } ->
                                                         if fn value then
                                                             Just label
@@ -542,13 +544,13 @@ includeCombinationsInBaseCounts distribution =
     distribution
         |> Dict.map
             (\labels count ->
-                case labels of
+                when labels is
                     [ single ] ->
                         let
                             combinations : Array Int
                             combinations =
                                 distribution
-                                    |> Dict.filter (\k _ -> Array.length k > 1 && Array.member single k)
+                                    |> Dict.keepIf (\k _ -> Array.length k > 1 && Array.member single k)
                                     |> Dict.values
                         in
                         count + Array.foldl (+) 0 combinations
@@ -560,7 +562,7 @@ includeCombinationsInBaseCounts distribution =
 
 formatExpectedDistribution : ExpectedDistribution -> String
 formatExpectedDistribution expected =
-    case expected of
+    when expected is
         Zero ->
             "exactly 0%"
 
@@ -588,7 +590,7 @@ stepSeed seed =
 
 testGeneratedValue : Simplify.State a -> Maybe Failure
 testGeneratedValue state =
-    case state.expectation of
+    when state.expectation is
         Pass _ ->
             Nothing
 
@@ -609,7 +611,7 @@ findSimplestFailure state =
 
 formatExpectation : Failure -> Expectation
 formatExpectation { given, expectation } =
-    case given of
+    when given is
         Nothing ->
             expectation
 

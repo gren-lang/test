@@ -16,7 +16,7 @@ For more information, see <https://github.com/elm-explorations/test/pull/153>
 type Test
     = GrenTestVariant__UnitTest ({} -> Array Expectation)
     | GrenTestVariant__FuzzTest (Random.Seed -> Int -> Array Expectation)
-    | GrenTestVariant__Labeled String Test
+    | GrenTestVariant__Labeled { label : String, test : Test }
     | GrenTestVariant__Skipped Test
     | GrenTestVariant__Only Test
     | GrenTestVariant__Batch (Array Test)
@@ -43,12 +43,12 @@ duplicatedName tests =
     let
         names : Test -> Array String
         names test =
-            case test of
-                GrenTestVariant__Labeled str _ ->
+            when test is
+                GrenTestVariant__Labeled { label = str } ->
                     [ str ]
 
                 GrenTestVariant__Batch subtests ->
-                    Array.flatMap names subtests
+                    Array.mapAndFlatten names subtests
 
                 GrenTestVariant__UnitTest _ ->
                     []
@@ -71,7 +71,7 @@ duplicatedName tests =
                 { dups = dups, uniques = Set.set newName uniques }
 
         { dups = dupsAccum, uniques = uniquesAccum } =
-            Array.flatMap names tests
+            Array.mapAndFlatten names tests
                 |> Array.foldl accumDuplicates { dups = Set.empty, uniques = Set.empty }
     in
     if Set.isEmpty dupsAccum then

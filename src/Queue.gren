@@ -52,26 +52,26 @@ If you need equality checks use [`toArray`](#toArray).
 
 -}
 type Queue a
-    = Queue (Front a) (Rear a)
+    = Queue { front : (Front a), rear : (Rear a) }
 
 
 {-| private pseudo-constructor
 -}
 queue : Front a -> Rear a -> Queue a
 queue fl rl =
-    case fl of
+    when fl is
         [] ->
-            Queue (Array.reverse rl) []
+            Queue { front = (Array.reverse rl), rear = [] }
 
         _ ->
-            Queue fl rl
+            Queue { front = fl, rear = rl }
 
 
 {-| Construct empty `Queue`
 -}
 empty : Queue a
 empty =
-    Queue [] []
+    Queue { front = [], rear = [] }
 
 
 {-| Construct Queue containing single value
@@ -81,7 +81,7 @@ empty =
 -}
 singleton : a -> Queue a
 singleton a =
-    Queue [ a ] []
+    Queue { front = [ a ], rear = [] }
 
 
 
@@ -96,7 +96,7 @@ singleton a =
 
 -}
 isEmpty : Queue a -> Bool
-isEmpty (Queue fl rl) =
+isEmpty (Queue { front = fl, rear = rl }) =
     Array.isEmpty fl && Array.isEmpty rl
 
 
@@ -108,8 +108,8 @@ isEmpty (Queue fl rl) =
 
 -}
 size : Queue a -> Int
-size (Queue fl rl) =
-    Array.length fl + Array.length rl
+size (Queue q) =
+    Array.length q.front + Array.length q.rear
 
 
 {-| Add item to `Queue`
@@ -120,8 +120,8 @@ size (Queue fl rl) =
 
 -}
 enqueue : a -> Queue a -> Queue a
-enqueue a (Queue fl rl) =
-    queue fl <| Array.pushFirst a rl
+enqueue a (Queue q) =
+    queue q.front <| Array.pushFirst a q.rear
 
 
 {-| Take item from `Queue`
@@ -132,13 +132,13 @@ enqueue a (Queue fl rl) =
 
 -}
 dequeue : Queue a -> { first : Maybe a, rest : Queue a }
-dequeue (Queue fl rl) =
-    case Array.popFirst fl of
+dequeue (Queue q) =
+    when Array.popFirst q.front is
         Nothing ->
-            { first = Nothing, rest = Queue [] [] }
+            { first = Nothing, rest = empty }
 
         Just { first = head, rest = tail } ->
-            { first = Just head, rest = queue tail rl }
+            { first = Just head, rest = queue tail q.rear }
 
 
 {-| Ask for front item without removing it from `Queue`
@@ -149,8 +149,8 @@ dequeue (Queue fl rl) =
 
 -}
 front : Queue a -> Maybe a
-front (Queue fl _) =
-    Array.first fl
+front (Queue q) =
+    Array.first q.front
 
 
 {-| Update value at the front of the queue
@@ -163,22 +163,22 @@ front (Queue fl _) =
 
 -}
 updateFront : (Maybe a -> Maybe a) -> Queue a -> Queue a
-updateFront f (Queue fl rl) =
+updateFront f (Queue q) =
     let
         update_ maybe t =
-            case f maybe of
+            when f maybe is
                 Just a ->
                     Array.pushFirst a t
 
                 Nothing ->
                     t
     in
-    case Array.popFirst fl of
+    when Array.popFirst q.front is
         Just { first = h, rest = t } ->
-            Queue (update_ (Just h) t) rl
+            Queue { front = (update_ (Just h) t), rear = q.rear }
 
         Nothing ->
-            Queue (update_ Nothing []) rl
+            Queue { front = (update_ Nothing []), rear = q.rear }
 
 
 
@@ -194,7 +194,7 @@ updateFront f (Queue fl rl) =
 -}
 fromArray : Array a -> Queue a
 fromArray list =
-    Queue list []
+    Queue { front = list, rear = [] }
 
 
 {-| Convert `Queue` to `Array`
@@ -205,8 +205,8 @@ fromArray list =
 
 -}
 toArray : Queue a -> Array a
-toArray (Queue fl rl) =
-    fl ++ Array.reverse rl
+toArray (Queue q) =
+    q.front ++ Array.reverse q.rear
 
 
 
@@ -221,12 +221,12 @@ toArray (Queue fl rl) =
 
 -}
 map : (a -> b) -> Queue a -> Queue b
-map fc (Queue fl rl) =
+map fc (Queue q) =
     let
         map_ =
             Array.map fc
     in
-    queue (map_ fl) (map_ rl)
+    queue (map_ q.front) (map_ q.rear)
 
 
 {-| Filter items items in `Queue`
@@ -237,9 +237,9 @@ map fc (Queue fl rl) =
 
 -}
 filter : (a -> Bool) -> Queue a -> Queue a
-filter fc (Queue fl rl) =
+filter fc (Queue q) =
     let
         f =
-            Array.filter fc
+            Array.keepIf fc
     in
-    queue (f fl) (f rl)
+    queue (f q.front) (f q.rear)

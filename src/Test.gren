@@ -56,7 +56,7 @@ concat tests =
             }
 
     else
-        case Internal.duplicatedName tests of
+        when Internal.duplicatedName tests is
             Err dups ->
                 let
                     dupDescription duped =
@@ -114,28 +114,34 @@ describe untrimmedDesc tests =
             }
 
     else
-        case Internal.duplicatedName tests of
+        when Internal.duplicatedName tests is
             Err dups ->
                 let
                     dupDescription duped =
                         "Contains multiple tests named '" ++ duped ++ "'. Let's rename them so we know which is which."
                 in
-                Internal.GrenTestVariant__Labeled desc <|
-                    Internal.failNow
-                        { description = String.join "\n" (Array.map dupDescription <| Set.toArray dups)
-                        , reason = Invalid DuplicatedName
-                        }
+                Internal.GrenTestVariant__Labeled 
+                    { label = desc
+                    , test =
+                        Internal.failNow
+                            { description = String.join "\n" (Array.map dupDescription <| Set.toArray dups)
+                            , reason = Invalid DuplicatedName
+                            }
+                    }
 
             Ok childrenNames ->
                 if Set.member desc childrenNames then
-                    Internal.GrenTestVariant__Labeled desc <|
-                        Internal.failNow
-                            { description = "The test '" ++ desc ++ "' contains a child test of the same name. Let's rename them so we know which is which."
-                            , reason = Invalid DuplicatedName
-                            }
+                    Internal.GrenTestVariant__Labeled 
+                        { label = desc
+                        , test =
+                            Internal.failNow
+                                { description = "The test '" ++ desc ++ "' contains a child test of the same name. Let's rename them so we know which is which."
+                                , reason = Invalid DuplicatedName
+                                }
+                        }
 
                 else
-                    Internal.GrenTestVariant__Labeled desc (Internal.GrenTestVariant__Batch tests)
+                    Internal.GrenTestVariant__Labeled { label = desc, test = (Internal.GrenTestVariant__Batch tests) }
 
 
 {-| Return a [`Test`](#Test) that evaluates a single
@@ -161,7 +167,7 @@ test untrimmedDesc thunk =
         Internal.blankDescriptionFailure
 
     else
-        Internal.GrenTestVariant__Labeled desc (Internal.GrenTestVariant__UnitTest (\{} -> [ thunk {} ]))
+        Internal.GrenTestVariant__Labeled { label = desc, test = (Internal.GrenTestVariant__UnitTest (\{} -> [ thunk {} ])) }
 
 
 {-| Returns a [`Test`](#Test) that is "TODO" (not yet implemented). These tests
@@ -357,15 +363,15 @@ fuzzWith options fuzzer desc getTest =
 
 fuzzWithHelp : FuzzOptions a -> Test -> Test
 fuzzWithHelp options aTest =
-    case aTest of
+    when aTest is
         Internal.GrenTestVariant__UnitTest _ ->
             aTest
 
         Internal.GrenTestVariant__FuzzTest run ->
             Internal.GrenTestVariant__FuzzTest (\seed _ -> run seed options.runs)
 
-        Internal.GrenTestVariant__Labeled label subTest ->
-            Internal.GrenTestVariant__Labeled label (fuzzWithHelp options subTest)
+        Internal.GrenTestVariant__Labeled { label, test = subTest } ->
+            Internal.GrenTestVariant__Labeled { label = label, test = (fuzzWithHelp options subTest) }
 
         Internal.GrenTestVariant__Skipped subTest ->
             -- It's important to treat skipped tests exactly the same as normal,

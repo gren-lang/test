@@ -8,9 +8,9 @@ traverse f list =
 
 traverseHelp : (a -> Maybe b) -> Array a -> Array b -> Maybe (Array b)
 traverseHelp f list acc =
-    case Array.popFirst list of
+    when Array.popFirst list is
         Just { first, rest } ->
-            case f first of
+            when f first is
                 Just a ->
                     traverseHelp f rest (Array.pushFirst a acc)
 

@@ -44,7 +44,7 @@ hardcoded run =
 
 getRun : PRNG -> RandomRun
 getRun prng =
-    case prng of
+    when prng is
         Random { run } ->
             run
 
@@ -54,7 +54,7 @@ getRun prng =
 
 getSeed : PRNG -> Maybe Random.Seed
 getSeed prng =
-    case prng of
+    when prng is
         Random { seed } ->
             Just seed
 

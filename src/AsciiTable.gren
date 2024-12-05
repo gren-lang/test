@@ -34,14 +34,14 @@ view columns items =
             columnData
                 |> Array.map
                     (\colRows ->
-                        Array.map String.length colRows
+                        Array.map String.unitLength colRows
                             |> Array.maximum
                             |> Maybe.withDefault 0
                     )
 
         padFn : Int -> Align -> String -> String
         padFn length align string =
-            case align of
+            when align is
                 AlignLeft ->
                     String.padRight length ' ' string
 

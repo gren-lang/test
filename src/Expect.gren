@@ -305,7 +305,7 @@ want a logical AND, use [`Expect.all`](#all).
 type FloatingPointTolerance
     = Absolute Float
     | Relative Float
-    | AbsoluteOrRelative Float Float
+    | AbsoluteOrRelative { absolute : Float, relative : Float }
 
 
 {-| Passes if the second and third arguments are equal within a tolerance
@@ -388,13 +388,13 @@ any `Ok`.
 -}
 ok : Result a b -> Expectation
 ok result =
-    case result of
+    when result is
         Ok _ ->
             pass
 
         Err _ ->
             { description = "Expect.ok"
-            , reason = Comparison "Ok _" (Internal.toString result)
+            , reason = Comparison { left = "Ok _", right = (Internal.toString result) }
             }
                 |> Test.Expectation.fail
 
@@ -432,10 +432,10 @@ any `Err`.
 -}
 err : Result a b -> Expectation
 err result =
-    case result of
+    when result is
         Ok _ ->
             { description = "Expect.err"
-            , reason = Comparison "Err _" (Internal.toString result)
+            , reason = Comparison { left = "Err _", right = (Internal.toString result) }
             }
                 |> Test.Expectation.fail
 
@@ -477,7 +477,10 @@ equalArrays expected actual =
 
     else
         { description = "Expect.equalArrays"
-        , reason = ArrayDiff (Array.map Internal.toString expected) (Array.map Internal.toString actual)
+        , reason = ArrayDiff 
+            { left = (Array.map Internal.toString expected)
+            , right = (Array.map Internal.toString actual)
+            }
         }
             |> Test.Expectation.fail
 
@@ -586,7 +589,7 @@ equalSets expected actual =
 
     test "Json.Decode.int can decode the number 42." <|
         \_ ->
-            case decodeString int "42" of
+            when decodeString int "42" is
                 Ok _ ->
                     Expect.pass
 
@@ -608,7 +611,7 @@ pass =
 
     test "Json.Decode.int can decode the number 42." <|
         \_ ->
-            case decodeString int "42" of
+            when decodeString int "42" is
                 Ok _ ->
                     Expect.pass
 
@@ -630,7 +633,7 @@ fail str =
 -}
 onFail : String -> Expectation -> Expectation
 onFail str expectation =
-    case expectation of
+    when expectation is
         Test.Expectation.Pass _ ->
             expectation
 
@@ -683,12 +686,12 @@ all list query =
 
 allHelp : Array (subject -> Expectation) -> subject -> Expectation
 allHelp list query =
-    case Array.popFirst list of
+    when Array.popFirst list is
         Nothing ->
             pass
 
         Just { first = check, rest } ->
-            case check query of
+            when check query is
                 Test.Expectation.Pass _ ->
                     allHelp rest query
 
@@ -720,7 +723,7 @@ equateWith : String -> (a -> b -> Bool) -> b -> a -> Expectation
 equateWith reason comparison b a =
     let
         isJust x =
-            case x of
+            when x is
                 Just _ ->
                     True
 
@@ -744,12 +747,12 @@ equateWith reason comparison b a =
         fail floatError
 
     else
-        testWith Equality reason comparison b a
+        testWith (\left right -> Equality { left = left, right = right }) reason comparison b a
 
 
 compareWith : String -> (a -> b -> Bool) -> b -> a -> Expectation
 compareWith =
-    testWith Comparison
+    testWith (\left right -> Comparison { left = left, right = right })
 
 
 testWith : (String -> String -> Reason) -> String -> (a -> b -> Bool) -> b -> a -> Expectation
@@ -770,11 +773,11 @@ testWith makeReason label runTest expected actual =
 
 absolute : FloatingPointTolerance -> Float
 absolute tolerance =
-    case tolerance of
+    when tolerance is
         Absolute val ->
             val
 
-        AbsoluteOrRelative val _ ->
+        AbsoluteOrRelative { absolute = val } ->
             val
 
         _ ->
@@ -783,11 +786,11 @@ absolute tolerance =
 
 relative : FloatingPointTolerance -> Float
 relative tolerance =
-    case tolerance of
+    when tolerance is
         Relative val ->
             val
 
-        AbsoluteOrRelative _ val ->
+        AbsoluteOrRelative { relative = val } ->
             val
 
         _ ->

@@ -82,7 +82,7 @@ type alias Runner =
 -}
 type RunnableTree
     = Runnable Runnable
-    | Labeled String RunnableTree
+    | Labeled { label : String, tree : RunnableTree }
 
 
 {-| Convert a `Test` into `SeededRunners`.
@@ -107,17 +107,17 @@ fromTest runs seed test =
         if Array.isEmpty distribution.only then
             if countAllRunnables distribution.skipped == 0 then
                 distribution.all
-                    |> Array.flatMap fromRunnableTree
+                    |> Array.mapAndFlatten fromRunnableTree
                     |> Plain
 
             else
                 distribution.all
-                    |> Array.flatMap fromRunnableTree
+                    |> Array.mapAndFlatten fromRunnableTree
                     |> Skipping
 
         else
             distribution.only
-                |> Array.flatMap fromRunnableTree
+                |> Array.mapAndFlatten fromRunnableTree
                 |> Only
 
 
@@ -128,17 +128,17 @@ countAllRunnables =
 
 countRunnables : RunnableTree -> Int
 countRunnables runnable =
-    case runnable of
+    when runnable is
         Runnable _ ->
             1
 
-        Labeled _ runner ->
+        Labeled { tree = runner } ->
             countRunnables runner
 
 
 run : Runnable -> Array Expectation
 run (Thunk fn) =
-    case runThunk fn of
+    when runThunk fn is
         Ok test ->
             test
 
@@ -158,14 +158,14 @@ fromRunnableTree =
 
 fromRunnableTreeHelp : Array String -> RunnableTree -> Array Runner
 fromRunnableTreeHelp labels runner =
-    case runner of
+    when runner is
         Runnable runnable ->
             [ { labels = labels
               , run = \_ -> run runnable
               }
             ]
 
-        Labeled label subRunner ->
+        Labeled { label, tree = subRunner } ->
             fromRunnableTreeHelp (Array.pushFirst label labels) subRunner
 
 
@@ -235,7 +235,7 @@ distributeSeeds =
 
 distributeSeedsHelp : Bool -> Int -> Random.Seed -> Test -> Distribution
 distributeSeedsHelp hashed runs seed test =
-    case test of
+    when test is
         Internal.GrenTestVariant__UnitTest aRun ->
             { seed = seed
             , all = [ Runnable (Thunk (\_ -> aRun {})) ]
@@ -254,7 +254,7 @@ distributeSeedsHelp hashed runs seed test =
             , skipped = []
             }
 
-        Internal.GrenTestVariant__Labeled description subTest ->
+        Internal.GrenTestVariant__Labeled { label = description, test = subTest } ->
             -- This fixes https://github.com/elm-community/elm-test/issues/192
             -- The first time we hit a Labeled, we want to use the hash of
             -- that label, along with the original seed, as our starting
@@ -266,9 +266,9 @@ distributeSeedsHelp hashed runs seed test =
                         distributeSeedsHelp True runs seed subTest
                 in
                 { seed = next.seed
-                , all = Array.map (Labeled description) next.all
-                , only = Array.map (Labeled description) next.only
-                , skipped = Array.map (Labeled description) next.skipped
+                , all = Array.map (\t -> Labeled { label = description, tree = t }) next.all
+                , only = Array.map (\t -> Labeled { label = description, tree = t }) next.only
+                , skipped = Array.map (\t -> Labeled { label = description, tree = t }) next.skipped
                 }
 
             else
@@ -302,9 +302,9 @@ distributeSeedsHelp hashed runs seed test =
                 -- with the hashed seed, but subsequent sibling tests in this Batch
                 -- get the same seed as before.
                 { seed = seed
-                , all = Array.map (Labeled description) next.all
-                , only = Array.map (Labeled description) next.only
-                , skipped = Array.map (Labeled description) next.skipped
+                , all = Array.map (\t -> Labeled { label = description, tree = t }) next.all
+                , only = Array.map (\t -> Labeled { label = description, tree = t }) next.only
+                , skipped = Array.map (\t -> Labeled { label = description, tree = t }) next.skipped
                 }
 
         Internal.GrenTestVariant__Skipped subTest ->
@@ -391,7 +391,7 @@ getFailureReason :
             , reason : Reason
             }
 getFailureReason expectation =
-    case expectation of
+    when expectation is
         Test.Expectation.Pass _ ->
             Nothing
 
@@ -407,7 +407,7 @@ getFailureReason expectation =
 -}
 getDistributionReport : Expectation -> DistributionReport
 getDistributionReport expectation =
-    case expectation of
+    when expectation is
         Test.Expectation.Pass { distributionReport } ->
             distributionReport
 
@@ -420,7 +420,7 @@ may treat these tests differently in their output.
 -}
 isTodo : Expectation -> Bool
 isTodo expectation =
-    case expectation of
+    when expectation is
         Test.Expectation.Pass _ ->
             False
 
@@ -461,7 +461,7 @@ formatLabels :
     -> Array String
     -> Array format
 formatLabels formatDescription formatTest labels =
-    case Array.popFirst <| Array.filter (not << String.isEmpty) labels of
+    when Array.popFirst <| Array.keepIf (not << String.isEmpty) labels is
         Nothing ->
             []
 
@@ -494,7 +494,7 @@ fuzz fuzzer =
     Random.independentSeed
         |> Random.map
             (\seed ->
-                case Fuzz.Internal.generate (PRNG.random seed) fuzzer of
+                when Fuzz.Internal.generate (PRNG.random seed) fuzzer is
                     Generated { value, prng } ->
                         Ok
                             { value= value

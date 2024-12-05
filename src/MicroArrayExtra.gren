@@ -11,22 +11,9 @@ splitWhen predicate list =
 
 
 findIndex : (a -> Bool) -> Array a -> Maybe Int
-findIndex =
-    findIndexHelp 0
-
-
-findIndexHelp : Int -> (a -> Bool) -> Array a -> Maybe Int
-findIndexHelp index predicate array =
-    case Array.popFirst array of
-        Nothing ->
-            Nothing
-
-        Just { first = x, rest = xs } ->
-            if predicate x then
-                Just index
-
-            else
-                findIndexHelp (index + 1) predicate xs
+findIndex pred array =
+    Array.findFirst pred array
+        |> Maybe.map .index
 
 
 splitAt : Int -> Array a -> { first : Array a, last : Array a }
@@ -43,7 +30,7 @@ transpose listOfArrays =
 
 rowsLength : Array (Array a) -> Int
 rowsLength listOfArrays =
-    case Array.first listOfArrays of
+    when Array.first listOfArrays is
         Nothing ->
             0
 

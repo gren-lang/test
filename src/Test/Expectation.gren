@@ -35,7 +35,7 @@ fail { description, reason } =
 -}
 withGiven : String -> Expectation -> Expectation
 withGiven newGiven expectation =
-    case expectation of
+    when expectation is
         Fail failure ->
             Fail { failure | given = Just newGiven }
 
@@ -47,7 +47,7 @@ withGiven newGiven expectation =
 -}
 withDistributionReport : DistributionReport -> Expectation -> Expectation
 withDistributionReport newDistributionReport expectation =
-    case expectation of
+    when expectation is
         Fail failure ->
             Fail { failure | distributionReport = newDistributionReport }
 

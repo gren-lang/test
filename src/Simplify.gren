@@ -116,7 +116,7 @@ simplifyOnce state =
 
 runCmds : Array SimplifyCmd -> State a -> State a
 runCmds cmds state =
-    case Array.popFirst cmds of
+    when Array.popFirst cmds is
         Nothing ->
             state
 
@@ -130,7 +130,7 @@ runCmds cmds state =
 
                 newRest =
                     if wasImprovement && newLength < RandomRun.length state.randomRun then
-                        Array.filter (\{ minLength } -> newLength >= minLength) rest
+                        Array.keepIf (\{ minLength } -> newLength >= minLength) rest
 
                     else
                         rest
@@ -155,7 +155,7 @@ logState label state =
     in
     let
         _ =
-            case Fuzz.Internal.generate (PRNG.hardcoded state.randomRun) state.fuzzer of
+            when Fuzz.Internal.generate (PRNG.hardcoded state.randomRun) state.fuzzer is
                 Generated { value } ->
                     let
                         _ =
@@ -177,7 +177,7 @@ runCmd cmd state =
                logRun ("trying " ++ Debug.toString cmd.type_ ++ " on") state.randomRun
         -}
         result =
-            case cmd.type_ of
+            when cmd.type_ is
                 DeleteChunkAndMaybeDecrementPrevious chunk ->
                     deleteChunkAndMaybeDecrementPrevious chunk state
 
@@ -225,9 +225,9 @@ keepIfBetter newRandomRun state =
         noImprovement state
 
     else
-        case Fuzz.Internal.generate (PRNG.hardcoded newRandomRun) state.fuzzer of
+        when Fuzz.Internal.generate (PRNG.hardcoded newRandomRun) state.fuzzer is
             Generated { value } ->
-                case state.getExpectation value of
+                when state.getExpectation value is
                     Pass _ ->
                         noImprovement state
 
@@ -316,7 +316,7 @@ swapChunkWithNeighbour chunk state =
 
 minimizeFloat : { leftIndex : Int } -> State a -> SimplifyResult a
 minimizeFloat { leftIndex } state =
-    case RandomRun.get leftIndex state.randomRun of
+    when RandomRun.get leftIndex state.randomRun is
         Nothing ->
             noImprovement state
 
@@ -325,11 +325,11 @@ minimizeFloat { leftIndex } state =
                 let
                     minimizeExponentPart : State a -> SimplifyResult a
                     minimizeExponentPart state_ =
-                        case
+                        when
                             Maybe.map2 (\hi lo -> { hi = hi, lo = lo })
                                 (RandomRun.get leftIndex state_.randomRun)
                                 (RandomRun.get (leftIndex + 1) state_.randomRun)
-                        of
+                        is
                             Nothing ->
                                 noImprovement state_
 
@@ -356,11 +356,11 @@ minimizeFloat { leftIndex } state =
 
                     minimizeMantissaPart : State a -> SimplifyResult a
                     minimizeMantissaPart state_ =
-                        case
+                        when
                             Maybe.map2 (\hi lo -> { hi = hi, lo = lo })
                                 (RandomRun.get leftIndex state_.randomRun)
                                 (RandomRun.get (leftIndex + 1) state_.randomRun)
-                        of
+                        is
                             Nothing ->
                                 noImprovement state_
 
@@ -395,7 +395,7 @@ minimizeFloat { leftIndex } state =
 
 minimizeChoice : { index : Int } -> State a -> SimplifyResult a
 minimizeChoice { index } state =
-    case RandomRun.get index state.randomRun of
+    when RandomRun.get index state.randomRun is
         Nothing ->
             noImprovement state
 
@@ -433,7 +433,7 @@ redistributeChoicesAndMaybeIncrement options state =
        Then we try to (binary-search) minimize the left while keeping the
        sum constant (so what we subtract from left we add to right).
     -}
-    case RandomRun.swapIfOutOfOrder options state.randomRun of
+    when RandomRun.swapIfOutOfOrder options state.randomRun is
         Nothing ->
             {- This only happens if we can't find the values (indexes are out of
                order). Both "did swap" and "didn't swap" fall into the Just case.

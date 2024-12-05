@@ -131,7 +131,7 @@ minimizeChoiceCmds run length =
     run
         |> RandomRun.toArray
         |> Array.indexedMap (\index value -> { index = index, value = value })
-        |> Array.filterMap
+        |> Array.mapAndKeepJust
             (\{ index, value } ->
                 if value > 0 then
                     Just
@@ -153,7 +153,7 @@ minimizeFloatCmds run length =
             run
                 |> RandomRun.toArray
                 |> Array.indexedMap (\index value -> { index = index, value = value })
-                |> Array.filterMap
+                |> Array.mapAndKeepJust
                     (\{ index, value } ->
                         if value > 1 then
                             Nothing
@@ -164,7 +164,7 @@ minimizeFloatCmds run length =
                 |> Set.fromArray
     in
     Array.range 0 (length - 3)
-        |> Array.filterMap
+        |> Array.mapAndKeepJust
             (\index ->
                 if Set.member (index + 2) possibleBoolIndexes then
                     Just
@@ -188,7 +188,7 @@ decrementTogetherCmds length =
                 2
     in
     Array.range 0 (length - 2)
-        |> Array.flatMap
+        |> Array.mapAndFlatten
             (\index ->
                 let
                     maxOffset =
@@ -197,7 +197,7 @@ decrementTogetherCmds length =
                             (length - index - 1)
                 in
                 Array.range 1 maxOffset
-                    |> Array.flatMap
+                    |> Array.mapAndFlatten
                         (\offset ->
                             [ 4, 2, 1 ]
                                 |> Array.map
@@ -253,7 +253,7 @@ swapCmds length =
         }
         |> Array.map
             (\cmd ->
-                case cmd.type_ of
+                when cmd.type_ is
                     SwapChunkWithNeighbour chunk ->
                         { cmd | minLength = cmd.minLength + chunk.size }
 

@@ -5,13 +5,4 @@ import Dict exposing (Dict)
 
 increment : comparable -> Dict comparable Int -> Dict comparable Int
 increment key dict =
-    dict
-        |> Dict.update key
-            (\maybeValue ->
-                case maybeValue of
-                    Nothing ->
-                        Just 1
-
-                    Just value ->
-                        Just (value + 1)
-            )
+    Dict.updateWithDefault key 0 (\value -> value + 1) dict

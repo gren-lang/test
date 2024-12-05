@@ -26,7 +26,7 @@ type ExpectedDistribution
 
 expectedDistributionToString : ExpectedDistribution -> String
 expectedDistributionToString expectedDistribution =
-    case expectedDistribution of
+    when expectedDistribution is
         Zero ->
             "0%"
 
@@ -39,7 +39,7 @@ expectedDistributionToString expectedDistribution =
 
 getDistributionLabels : Distribution a -> Maybe (Array { label : String, fn : a -> Bool })
 getDistributionLabels distribution =
-    case distribution of
+    when distribution is
         NoDistributionNeeded ->
             Nothing
 
@@ -52,7 +52,7 @@ getDistributionLabels distribution =
 
 getExpectedDistributions : Distribution a -> Maybe (Array { label : String, expectedDistribution : ExpectedDistribution })
 getExpectedDistributions distribution =
-    case distribution of
+    when distribution is
         NoDistributionNeeded ->
             Nothing
 

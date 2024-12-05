@@ -77,7 +77,7 @@ isFull run =
 
 nextChoice : RandomRun -> Maybe { first : Int, rest : RandomRun }
 nextChoice run =
-    case Queue.dequeue run.data of
+    when Queue.dequeue run.data is
         {  first = Nothing } ->
             Nothing
 
@@ -169,7 +169,7 @@ replaceChunkWithZero chunk run =
 
 sortChunk : Chunk -> RandomRun -> RandomRun
 sortChunk chunk run =
-    case getChunk chunk run of
+    when getChunk chunk run is
         Nothing ->
             run
 
@@ -304,7 +304,7 @@ set index value run =
 
 compare : RandomRun -> RandomRun -> Order
 compare a b =
-    case Basics.compare (.length a) (.length b) of
+    when Basics.compare (.length a) (.length b) is
         LT ->
             LT
 
@@ -322,7 +322,7 @@ toArray run =
 
 update : Int -> (Int -> Int) -> RandomRun -> RandomRun
 update index fn run =
-    case get index run of
+    when get index run is
         Nothing ->
             run
 

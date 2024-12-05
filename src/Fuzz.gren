@@ -253,7 +253,7 @@ intRange lo hi =
                                 |> (\n -> 2 ^ n)
                     in
                     intPreferences
-                        |> Array.filter (\{ bits } -> bits <= maxBits)
+                        |> Array.keepIf (\{ bits } -> bits <= maxBits)
                         |> (\array_ ->
                                 {- failsafe for values taking less than 4 bits
                                    (lowest bitcount in intPreferences)
@@ -623,7 +623,7 @@ stringOfLengthBetween min max =
                 (\str ->
                     let
                         length =
-                            String.length str
+                            String.unitLength str
                     in
                     length >= min && length <= max
                 )
@@ -784,7 +784,7 @@ map : (a -> b) -> Fuzzer a -> Fuzzer b
 map fn (Fuzzer fuzzer) =
     Fuzzer <|
         \prng ->
-            case fuzzer prng of
+            when fuzzer prng is
                 Generated g ->
                     Generated
                         { value = fn g.value
@@ -801,9 +801,9 @@ map2 : (a -> b -> c) -> Fuzzer a -> Fuzzer b -> Fuzzer c
 map2 fn (Fuzzer fuzzerA) (Fuzzer fuzzerB) =
     Fuzzer <|
         \prng ->
-            case fuzzerA prng of
+            when fuzzerA prng is
                 Generated a ->
-                    case fuzzerB a.prng of
+                    when fuzzerB a.prng is
                         Generated b ->
                             Generated
                                 { value = fn a.value b.value
@@ -823,11 +823,11 @@ map3 : (a -> b -> c -> d) -> Fuzzer a -> Fuzzer b -> Fuzzer c -> Fuzzer d
 map3 fn (Fuzzer fuzzerA) (Fuzzer fuzzerB) (Fuzzer fuzzerC) =
     Fuzzer <|
         \prng ->
-            case fuzzerA prng of
+            when fuzzerA prng is
                 Generated a ->
-                    case fuzzerB a.prng of
+                    when fuzzerB a.prng is
                         Generated b ->
-                            case fuzzerC b.prng of
+                            when fuzzerC b.prng is
                                 Generated c ->
                                     Generated
                                         { value = fn a.value b.value c.value
@@ -850,13 +850,13 @@ map4 : (a -> b -> c -> d -> e) -> Fuzzer a -> Fuzzer b -> Fuzzer c -> Fuzzer d -
 map4 fn (Fuzzer fuzzerA) (Fuzzer fuzzerB) (Fuzzer fuzzerC) (Fuzzer fuzzerD) =
     Fuzzer <|
         \prng ->
-            case fuzzerA prng of
+            when fuzzerA prng is
                 Generated a ->
-                    case fuzzerB a.prng of
+                    when fuzzerB a.prng is
                         Generated b ->
-                            case fuzzerC b.prng of
+                            when fuzzerC b.prng is
                                 Generated c ->
-                                    case fuzzerD c.prng of
+                                    when fuzzerD c.prng is
                                         Generated d ->
                                             Generated
                                                 { value = fn a.value b.value c.value d.value
@@ -882,15 +882,15 @@ map5 : (a -> b -> c -> d -> e -> f) -> Fuzzer a -> Fuzzer b -> Fuzzer c -> Fuzze
 map5 fn (Fuzzer fuzzerA) (Fuzzer fuzzerB) (Fuzzer fuzzerC) (Fuzzer fuzzerD) (Fuzzer fuzzerE) =
     Fuzzer <|
         \prng ->
-            case fuzzerA prng of
+            when fuzzerA prng is
                 Generated a ->
-                    case fuzzerB a.prng of
+                    when fuzzerB a.prng is
                         Generated b ->
-                            case fuzzerC b.prng of
+                            when fuzzerC b.prng is
                                 Generated c ->
-                                    case fuzzerD c.prng of
+                                    when fuzzerD c.prng is
                                         Generated d ->
-                                            case fuzzerE d.prng of
+                                            when fuzzerE d.prng is
                                                 Generated e ->
                                                     Generated
                                                         { value = fn a.value b.value c.value d.value e.value
@@ -919,17 +919,17 @@ map6 : (a -> b -> c -> d -> e -> f -> g) -> Fuzzer a -> Fuzzer b -> Fuzzer c -> 
 map6 fn (Fuzzer fuzzerA) (Fuzzer fuzzerB) (Fuzzer fuzzerC) (Fuzzer fuzzerD) (Fuzzer fuzzerE) (Fuzzer fuzzerF) =
     Fuzzer <|
         \prng ->
-            case fuzzerA prng of
+            when fuzzerA prng is
                 Generated a ->
-                    case fuzzerB a.prng of
+                    when fuzzerB a.prng is
                         Generated b ->
-                            case fuzzerC b.prng of
+                            when fuzzerC b.prng is
                                 Generated c ->
-                                    case fuzzerD c.prng of
+                                    when fuzzerD c.prng is
                                         Generated d ->
-                                            case fuzzerE d.prng of
+                                            when fuzzerE d.prng is
                                                 Generated e ->
-                                                    case fuzzerF e.prng of
+                                                    when fuzzerF e.prng is
                                                         Generated f ->
                                                             Generated
                                                                 { value = fn a.value b.value c.value d.value e.value f.value
@@ -961,19 +961,19 @@ map7 : (a -> b -> c -> d -> e -> f -> g -> h) -> Fuzzer a -> Fuzzer b -> Fuzzer 
 map7 fn (Fuzzer fuzzerA) (Fuzzer fuzzerB) (Fuzzer fuzzerC) (Fuzzer fuzzerD) (Fuzzer fuzzerE) (Fuzzer fuzzerF) (Fuzzer fuzzerG) =
     Fuzzer <|
         \prng ->
-            case fuzzerA prng of
+            when fuzzerA prng is
                 Generated a ->
-                    case fuzzerB a.prng of
+                    when fuzzerB a.prng is
                         Generated b ->
-                            case fuzzerC b.prng of
+                            when fuzzerC b.prng is
                                 Generated c ->
-                                    case fuzzerD c.prng of
+                                    when fuzzerD c.prng is
                                         Generated d ->
-                                            case fuzzerE d.prng of
+                                            when fuzzerE d.prng is
                                                 Generated e ->
-                                                    case fuzzerF e.prng of
+                                                    when fuzzerF e.prng is
                                                         Generated f ->
-                                                            case fuzzerG f.prng of
+                                                            when fuzzerG f.prng is
                                                                 Generated g ->
                                                                     Generated
                                                                         { value = fn a.value b.value c.value d.value e.value f.value g.value
@@ -1008,21 +1008,21 @@ map8 : (a -> b -> c -> d -> e -> f -> g -> h -> i) -> Fuzzer a -> Fuzzer b -> Fu
 map8 fn (Fuzzer fuzzerA) (Fuzzer fuzzerB) (Fuzzer fuzzerC) (Fuzzer fuzzerD) (Fuzzer fuzzerE) (Fuzzer fuzzerF) (Fuzzer fuzzerG) (Fuzzer fuzzerH) =
     Fuzzer <|
         \prng ->
-            case fuzzerA prng of
+            when fuzzerA prng is
                 Generated a ->
-                    case fuzzerB a.prng of
+                    when fuzzerB a.prng is
                         Generated b ->
-                            case fuzzerC b.prng of
+                            when fuzzerC b.prng is
                                 Generated c ->
-                                    case fuzzerD c.prng of
+                                    when fuzzerD c.prng is
                                         Generated d ->
-                                            case fuzzerE d.prng of
+                                            when fuzzerE d.prng is
                                                 Generated e ->
-                                                    case fuzzerF e.prng of
+                                                    when fuzzerF e.prng is
                                                         Generated f ->
-                                                            case fuzzerG f.prng of
+                                                            when fuzzerG f.prng is
                                                                 Generated g ->
-                                                                    case fuzzerH g.prng of
+                                                                    when fuzzerH g.prng is
                                                                         Generated h ->
                                                                             Generated
                                                                                 { value = fn a.value b.value c.value d.value e.value f.value g.value h.value
@@ -1123,7 +1123,7 @@ frequencyHelp functionName fuzzers =
     else
         let
             nonzeroFuzzers =
-                Array.filter (\f -> f.weight > 0) fuzzers
+                Array.keepIf (\f -> f.weight > 0) fuzzers
         in
         if Array.isEmpty nonzeroFuzzers then
             invalid <| functionName ++ ": You must provide at least one frequency pair with weight greater than 0."
@@ -1152,7 +1152,7 @@ frequencyHelp functionName fuzzers =
 
                                 go : Float -> Array { weight : Float, fuzzer : Fuzzer a } -> Fuzzer a
                                 go countdown acc =
-                                    case Array.popFirst acc of
+                                    when Array.popFirst acc is
                                         Nothing ->
                                             invalid <| "elm-test bug: " ++ functionName ++ " encountered empty array after checking for it."
 
@@ -1186,7 +1186,7 @@ intFrequency fuzzers =
         invalid "intFrequency: Weights cannot be non-positive"
 
     else
-        case Array.popFirst fuzzers of
+        when Array.popFirst fuzzers is
             Just { first = fuzz, rest = rest } ->
                 let
                     weightSum : Int
@@ -1251,7 +1251,7 @@ oneOf fuzzers =
 
 oneOfHelp : String -> String -> Array (Fuzzer a) -> Fuzzer a
 oneOfHelp functionName itemName fuzzers =
-    case Array.length fuzzers of
+    when Array.length fuzzers is
         0 ->
             invalid <| functionName ++ ": You must provide at least one item."
 
@@ -1259,7 +1259,7 @@ oneOfHelp functionName itemName fuzzers =
             uniformInt (length - 1)
                 |> andThen
                     (\i ->
-                        case Array.get i fuzzers of
+                        when Array.get i fuzzers is
                             Nothing ->
                                 -- shouldn't happen
                                 invalid <| "elm-test bug: " ++ functionName ++ " didn't find a " ++ itemName ++ " at position " ++ String.fromInt i ++ " in the array of length " ++ String.fromInt length ++ "."
@@ -1385,7 +1385,7 @@ andThen : (a -> Fuzzer b) -> Fuzzer a -> Fuzzer b
 andThen fn (Fuzzer fuzzer) =
     Fuzzer <|
         \prng ->
-            case fuzzer prng of
+            when fuzzer prng is
                 Generated g ->
                     let
                         (Fuzzer newFuzzer) =
@@ -1507,7 +1507,7 @@ rollDice maxValue diceGenerator =
                     }
 
             else
-                case prng of
+                when prng is
                     Random r ->
                         let
                             { value = diceRoll, seed = newSeed } =
@@ -1536,7 +1536,7 @@ rollDice maxValue diceGenerator =
                                 }
 
                     Hardcoded h ->
-                        case RandomRun.nextChoice h.unusedPart of
+                        when RandomRun.nextChoice h.unusedPart is
                             Nothing ->
                                 -- This happens if we simplified too much / in an incompatible way
                                 Rejected
@@ -1583,7 +1583,7 @@ forcedChoice n =
                     }
 
             else
-                case prng of
+                when prng is
                     Random r ->
                         Generated
                             { value = n
@@ -1591,7 +1591,7 @@ forcedChoice n =
                             }
 
                     Hardcoded h ->
-                        case RandomRun.nextChoice h.unusedPart of
+                        when RandomRun.nextChoice h.unusedPart is
                             Nothing ->
                                 -- This happens if we simplified too much / in an incompatible way
                                 Rejected
@@ -1660,11 +1660,11 @@ Will return an empty array in case of rejection.
 -}
 examples : Int -> Fuzzer a -> Array a
 examples n fuzzer =
-    case
+    when
         Fuzz.Internal.generate
             (PRNG.random (Random.initialSeed n))
             (arrayOfLength n fuzzer)
-    of
+    is
         Generated { value } ->
             value
 
@@ -1717,11 +1717,11 @@ function will also return all the found combinations:
 -}
 labelExamples : Int -> Array { label : String, predicate : a -> Bool } -> Fuzzer a -> Array { labels : Array String, value : Maybe a }
 labelExamples n labels fuzzer =
-    case
+    when
         Fuzz.Internal.generate
             (PRNG.random (Random.initialSeed n))
             (arrayOfLength n fuzzer)
-    of
+    is
         Generated { value } ->
             let
                 foundExamples : Dict (Array String) a
@@ -1733,7 +1733,7 @@ labelExamples n labels fuzzer =
                                     categories : Array String
                                     categories =
                                         labels
-                                            |> Array.filterMap
+                                            |> Array.mapAndKeepJust
                                                 (\{ label, predicate } ->
                                                     if predicate item then
                                                         Just label
@@ -1749,7 +1749,7 @@ labelExamples n labels fuzzer =
                                     acc
                                         |> Dict.update categories
                                             (\maybeExample ->
-                                                case maybeExample of
+                                                when maybeExample is
                                                     Nothing ->
                                                         Just item
 
@@ -1772,9 +1772,9 @@ labelExamples n labels fuzzer =
                             )
                             []
             in
-            Array.filterMap
+            Array.mapAndKeepJust
                 (\{ label } ->
-                    case Dict.get [ label ] foundExamples of
+                    when Dict.get [ label ] foundExamples is
                         Nothing ->
                             if Dict.any (\k _ -> Array.member label k) foundExamples then
                                 -- don't show this example: all its occurences were included in combination with some other label

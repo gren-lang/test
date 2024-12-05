@@ -31,7 +31,7 @@ formatTable { runsElapsed, distributionCount } =
         distribution : Array { labels : Array String, count : Int, percentage : Float }
         distribution =
             distributionArray
-                |> Array.filter
+                |> Array.keepIf
                     (\{ key = labels, value = count } ->
                         not
                             ((Array.length labels == 1)

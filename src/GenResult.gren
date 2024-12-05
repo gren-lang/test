@@ -19,7 +19,7 @@ type GenResult a
 
 getPrng : GenResult a -> PRNG
 getPrng genResult =
-    case genResult of
+    when genResult is
         Generated { prng } ->
             prng
 
