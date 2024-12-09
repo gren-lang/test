@@ -15,10 +15,10 @@ two parts of an `Expect.equal` failure.
 -}
 type Reason
     = Custom
-    | Equality { left : String, right : String }
-    | Comparison { left : String, right : String }
+    | Equality { expected : String, actual : String }
+    | Comparison { expected : String, actual : String }
       -- Expected, actual, (index of problem, expected element, actual element)
-    | ArrayDiff { left : (Array String), right : (Array String) }
+    | ArrayDiff { expected : (Array String), actual : (Array String) }
       {- I don't think we need to show the diff twice with + and - reversed. Just show it after the main vertical bar.
          "Extra" and "missing" are relative to the actual value.
       -}

@@ -394,7 +394,7 @@ ok result =
 
         Err _ ->
             { description = "Expect.ok"
-            , reason = Comparison { left = "Ok _", right = (Internal.toString result) }
+            , reason = Comparison { expected = "Ok _", actual = (Internal.toString result) }
             }
                 |> Test.Expectation.fail
 
@@ -435,7 +435,7 @@ err result =
     when result is
         Ok _ ->
             { description = "Expect.err"
-            , reason = Comparison { left = "Err _", right = (Internal.toString result) }
+            , reason = Comparison { expected = "Err _", actual = (Internal.toString result) }
             }
                 |> Test.Expectation.fail
 
@@ -478,8 +478,8 @@ equalArrays expected actual =
     else
         { description = "Expect.equalArrays"
         , reason = ArrayDiff 
-            { left = (Array.map Internal.toString expected)
-            , right = (Array.map Internal.toString actual)
+            { expected = (Array.map Internal.toString expected)
+            , actual = (Array.map Internal.toString actual)
             }
         }
             |> Test.Expectation.fail
@@ -747,12 +747,12 @@ equateWith reason comparison b a =
         fail floatError
 
     else
-        testWith (\left right -> Equality { left = left, right = right }) reason comparison b a
+        testWith (\left right -> Equality { expected = left, actual = right }) reason comparison b a
 
 
 compareWith : String -> (a -> b -> Bool) -> b -> a -> Expectation
 compareWith =
-    testWith (\left right -> Comparison { left = left, right = right })
+    testWith (\left right -> Comparison { expected = left, actual = right })
 
 
 testWith : (String -> String -> Reason) -> String -> (a -> b -> Bool) -> b -> a -> Expectation
