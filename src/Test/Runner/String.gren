@@ -1,0 +1,157 @@
+module Test.Runner.String exposing (Summary, runWithOptions)
+
+{-| String Runner
+
+Run a test and present its results as a nicely-formatted String, along with
+a count of how many tests passed and failed.
+
+@docs Summary, runWithOptions
+
+-}
+
+import Dict exposing (Dict)
+import Expect exposing (Expectation)
+import Random
+import Test.Runner.String.Distribution
+import Test.Runner.String.Format
+import Test exposing (Test)
+import Test.Runner exposing (Runner, SeededRunners(..))
+
+
+{-| The output string, the number of passed tests,
+and the number of failed tests.
+-}
+type alias Summary =
+    { output : String
+    , passed : Int
+    , failed : Int
+    , autoFail : Maybe String
+    }
+
+
+toOutput : Summary -> SeededRunners -> Summary
+toOutput summary seededRunners =
+    let
+        render =
+            Array.foldl toOutputHelp
+    in
+    when seededRunners is
+        Plain runners ->
+            render { summary | autoFail = Nothing } runners
+
+        Only runners ->
+            render { summary | autoFail = Just "Test.only was used" } runners
+
+        Skipping runners ->
+            render { summary | autoFail = Just "Test.skip was used" } runners
+
+        Invalid message ->
+            { output = message, passed = 0, failed = 0, autoFail = Nothing }
+
+
+toOutputHelp : Runner -> Summary -> Summary
+toOutputHelp runner summary =
+    {-
+       let
+           _ =
+               Debug.log "==================" {}
+       in
+       let
+           _ =
+               Debug.log "TEST" runner.labels
+       in
+    -}
+    runner.run {}
+        |> Array.foldl (fromExpectation runner.labels) summary
+
+
+fromExpectation : Array String -> Expectation -> Summary -> Summary
+fromExpectation labels expectation summary =
+    let
+        distributionReport : Maybe String
+        distributionReport =
+            expectation
+                |> Test.Runner.getDistributionReport
+                |> Test.Runner.String.Distribution.report labels
+
+        summaryWithDistribution : Summary
+        summaryWithDistribution =
+            when distributionReport is
+                Nothing ->
+                    summary
+
+                Just distribution ->
+                    { summary
+                        | output =
+                            summary.output
+                                ++ "\n\n"
+                                ++ distribution
+                                ++ "\n"
+                    }
+    in
+    when Test.Runner.getFailureReason expectation is
+        Nothing ->
+            { summaryWithDistribution | passed = summaryWithDistribution.passed + 1 }
+
+        Just { given, description, reason } ->
+            let
+                message =
+                    Test.Runner.String.Format.format description reason
+
+                prefix =
+                    when given is
+                        Nothing ->
+                            ""
+
+                        Just g ->
+                            "Given " ++ g ++ "\n\n"
+
+                newOutput =
+                    "\n\n"
+                        ++ outputLabels labels
+                        ++ "\n"
+                        ++ (prefix ++ indentLines message)
+                        ++ "\n"
+            in
+            { summaryWithDistribution
+                | output = summaryWithDistribution.output ++ newOutput
+                , failed = summaryWithDistribution.failed + 1
+                , passed = summaryWithDistribution.passed
+            }
+
+
+outputLabels : Array String -> String
+outputLabels labels =
+    labels
+        |> Test.Runner.formatLabels ((++) "↓ ") ((++) "✗ ")
+        |> String.join "\n"
+
+
+wrap : String -> String -> String
+wrap delimiter string =
+    delimiter ++ string ++ delimiter
+
+
+indentLines : String -> String
+indentLines str =
+    str
+        |> String.split "\n"
+        |> Array.map ((++) "    ")
+        |> String.join "\n"
+
+
+{-| Run a test and return a Summary.
+-}
+runWithOptions : Int -> Random.Seed -> Test -> Summary
+runWithOptions runs seed test =
+    let
+        seededRunners =
+            Test.Runner.fromTest runs seed test
+    in
+    toOutput
+        { output = ""
+        , passed = 0
+        , failed = 0
+        , autoFail = Just "no tests were run"
+        }
+        seededRunners
