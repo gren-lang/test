@@ -2,7 +2,8 @@
 
 Write unit and fuzz tests for Gren code.
 
-This package allows you to define tests, but in order to run them you will need a [test runner](https://github.com/gren-lang/test-runner-node).
+This package allows you to define tests, but in order to run them you will need a test runner.
+We have one for [node](https://github.com/gren-lang/test-runner-node) and the [browser](https://github.com/gren-lang/test-runner-browser).
 
 This is a port of [elm-explorations/test](https://github.com/elm-explorations/test).
 
